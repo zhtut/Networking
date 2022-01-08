@@ -9,13 +9,13 @@ Pod::Spec.new do |s|
     网络工具库 
                    DESC
 
-  s.homepage     = "https://gitee.com/ztgtut/SSNetwork.git"
+  s.homepage     = "https://github.com/zhtut/SSNetwork.git"
 
   s.license        = { :type => 'MIT', :file => 'LICENSE' }
 
   s.author             = { "zhtg" => "zhtg@icloud.com" }
 
-  s.source       = { :git => "https://gitee.com/ztgtut/SSNetwork.git", :tag => "#{s.version}" }
+  s.source       = { :git => "https://github.com/zhtut/SSNetwork.git", :tag => "#{s.version}" }
 
   s.source_files  = "Sources/**/*.swift"
   s.module_name   = 'SSNetwork'
