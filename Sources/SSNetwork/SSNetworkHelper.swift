@@ -62,7 +62,7 @@ open class SSNetworkHelper: NSObject, URLSessionDelegate, URLSessionDataDelegate
     open class func sendRequest(urlStr: String,
                                 params: Any? = nil,
                                 header: [String: String]? = nil,
-                                method: SSHttpMethod,
+                                method: SSHttpMethod = .GET,
                                 timeOut: TimeInterval = SSTIMEOUT,
                                 printLog: Bool = false,
                                 completion: @escaping SSResponseHandler) -> URLSessionDataTask? {
