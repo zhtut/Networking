@@ -68,7 +68,7 @@ open class SSResponse: NSObject {
         return originData != nil
     }
     /// 是否系统错误或者网络错误，未到达服务器
-    open var systemErrorMsg: String? {
+    open var systemErrMsg: String? {
         return originError != nil ? originError!.localizedDescription : nil
     }
     
