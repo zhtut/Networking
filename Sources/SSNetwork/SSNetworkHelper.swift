@@ -13,6 +13,7 @@ import FoundationNetworking
 public enum SSHttpMethod: String {
     case GET
     case POST
+    case DELETE
 }
 
 public let SSTIMEOUT: TimeInterval = 10.0
@@ -82,7 +83,8 @@ open class SSNetworkHelper: NSObject, URLSessionDelegate, URLSessionDataDelegate
                 request.addValue(value, forHTTPHeaderField: key)
             }
         }
-        if method == .POST && params != nil {
+        let needBody = (method == .POST)
+        if needBody && params != nil {
             if params is Data {
                 let data = params as? Data
                 request.httpBody = data

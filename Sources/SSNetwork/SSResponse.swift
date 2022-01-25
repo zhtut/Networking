@@ -64,12 +64,21 @@ open class SSResponse: NSObject {
     /// 原始返回的error，系统的error，可以查看系统的错误信息
     open var originError: Error?
     /// 获取服务器返回成功
-    open var fetchSucceed: Bool {
+    open var reachSucceed: Bool {
         return originData != nil
+    }
+    open var fetchSucceed: Bool {
+        if let originResponse = originResponse as? HTTPURLResponse {
+            return originResponse.statusCode == 200
+        }
+        return false
     }
     /// 是否系统错误或者网络错误，未到达服务器
     open var systemErrMsg: String? {
-        return originError != nil ? originError!.localizedDescription : nil
+        if let originError = originError {
+            return originError.localizedDescription
+        }
+        return originString
     }
     
     /// 开始请求的时间，毫秒
@@ -99,7 +108,7 @@ open class SSResponse: NSObject {
                 message.append(" -d \"\(httpBodyStr!)\"")
             }
             message.append("\n------Response:\(response.duration ?? 0.0)ms\n")
-            if response.fetchSucceed, response.originString != nil {
+            if response.originString != nil {
                 message.append("\(response.originString!)")
             } else if response.originError != nil {
                 message.append("\(response.originError!)")
