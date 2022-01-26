@@ -148,7 +148,13 @@ public extension Dictionary {
         }
         var paramStr: String?
         for (key,value) in self {
-            let valueStr = "\(value)"
+            var valueStr = "\(value)"
+            if JSONSerialization.isValidJSONObject(value) {
+                if let data = try? JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed),
+                 let str = String(data: data, encoding: .utf8) {
+                    valueStr = str.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? ""
+                }
+            }
             let str = "\(key)=\(valueStr)"
             if paramStr == nil {
                 paramStr = str
