@@ -14,40 +14,13 @@ public enum SSHttpMethod: String {
     case GET
     case POST
     case DELETE
+    case PUT
 }
 
 public let SSTIMEOUT: TimeInterval = 10.0
 
 /// 网络发送工具，使用了系统的URLSession去发送网络请求
 open class SSNetworkHelper: NSObject, URLSessionDelegate, URLSessionDataDelegate {
-    
-    @discardableResult
-    /// 发送一个GET的请求
-    /// - Parameters:
-    ///   - urlStr: url字符串
-    ///   - params: 参数，只支持字典，并且会拼接到url中
-    ///   - completion: 完成的回调，Response必不为空
-    /// - Returns: 返回\(URLSesstionDataTask)
-    open class func GET(urlStr: String,
-                        params: Any? = nil,
-                        completion: @escaping SSResponseHandler) -> URLSessionDataTask? {
-        let task = SSNetworkHelper.sendRequest(urlStr: urlStr, params: params, header: nil, method: .GET, timeOut: SSTIMEOUT, completion: completion)
-        return task
-    }
-    
-    @discardableResult
-    /// 发送一个POST的请求
-    /// - Parameters:
-    ///   - urlStr: url字符串
-    ///   - params: 参数，可以是字典，数组，字符串，会放到HTTPBody中
-    ///   - completion: 完成的回调，Response必不为空
-    /// - Returns: 返回\(URLSesstionDataTask)
-    open class func POST(urlStr: String,
-                         params: Any? = nil,
-                         completion: @escaping SSResponseHandler) -> URLSessionDataTask? {
-        let task = SSNetworkHelper.sendRequest(urlStr: urlStr, params: params, header: nil, method: .POST, timeOut: SSTIMEOUT, completion: completion)
-        return task
-    }
     
     @discardableResult
     /// 发送网络请求
@@ -83,7 +56,7 @@ open class SSNetworkHelper: NSObject, URLSessionDelegate, URLSessionDataDelegate
                 request.addValue(value, forHTTPHeaderField: key)
             }
         }
-        let needBody = (method == .POST)
+        let needBody = (method == .POST || method == .PUT)
         if needBody && params != nil {
             if params is Data {
                 let data = params as? Data

@@ -98,14 +98,14 @@ open class SSResponse: NSObject {
                 httpBodyStr = String(data: request.httpBody!, encoding: .utf8)
             }
             var message = ">>>>>>>>>>Start:\(response.start?.dateDesc ?? "")"
-            message.append("\ncurl -X \(method) \"\(urlStr)\"")
+            message.append("\ncurl -X \(method) \"\(urlStr)\" \\")
             if headerFields != nil {
                 for (key, value) in headerFields! {
-                    message.append(" -H \"\(key):\(value)\"")
+                    message.append("\n -H \"\(key):\(value)\" \\")
                 }
             }
             if httpBodyStr != nil {
-                message.append(" -d \"\(httpBodyStr!)\"")
+                message.append("\n -d \"\(httpBodyStr!)\" \\")
             }
             message.append("\n------Response:\(response.duration ?? 0.0)ms\n")
             if response.originString != nil {
@@ -113,7 +113,7 @@ open class SSResponse: NSObject {
             } else if response.originError != nil {
                 message.append("\(response.originError!)")
             }
-            message.append("\n<<<<<<<<<<End<<<<<<<<<<")
+            message.append("\nEnd<<<<<<<<<<")
             return message
         }
         return super.description
