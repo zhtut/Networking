@@ -150,9 +150,9 @@ public extension Dictionary {
         for (key,value) in self {
             var valueStr = "\(value)"
             if JSONSerialization.isValidJSONObject(value) {
-                if let data = try? JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed),
+                if let data = try? JSONSerialization.data(withJSONObject: value, options: .init(rawValue: 0)),
                  let str = String(data: data, encoding: .utf8) {
-                    valueStr = str.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? ""
+                    valueStr = str.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                 }
             }
             let str = "\(key)=\(valueStr)"
