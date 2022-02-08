@@ -107,6 +107,9 @@ open class SSResponse: NSObject {
             if httpBodyStr != nil {
                 message.append("\n -d \"\(httpBodyStr!)\" \\")
             }
+            if message.hasSuffix(" \\") {
+                message = "\(message.removeLast())"
+            }
             message.append("\n------Response:\(response.duration ?? 0.0)ms\n")
             if response.originString != nil {
                 message.append("\(response.originString!)")
