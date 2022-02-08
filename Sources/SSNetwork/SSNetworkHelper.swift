@@ -41,8 +41,19 @@ open class SSNetworkHelper: NSObject, URLSessionDelegate, URLSessionDataDelegate
                                 printLog: Bool = false,
                                 completion: @escaping SSResponseHandler) -> URLSessionDataTask? {
         var urlString = urlStr
-        if method == .GET {
+        let useBody = (method != .GET)
+        var httpBody: Data?
+        if !useBody {
             urlString = getURLString(url: urlStr, params: params)
+        } else {
+            if params is Data {
+                httpBody = params as? Data
+            } else if params is [String: Any] || params is [Any] {
+                httpBody = try? JSONSerialization.data(withJSONObject: params!, options: JSONSerialization.WritingOptions(rawValue: 0))
+            } else if params is String {
+                let str = params as? String
+                httpBody = str?.data(using: .utf8)
+            }
         }
         guard let nsURL = URL(string: urlString) else {
             print("URL生成失败，请检查URL是否正确：\(urlString)")
@@ -56,19 +67,8 @@ open class SSNetworkHelper: NSObject, URLSessionDelegate, URLSessionDataDelegate
                 request.addValue(value, forHTTPHeaderField: key)
             }
         }
-        let needBody = (method == .POST || method == .PUT)
-        if needBody && params != nil {
-            if params is Data {
-                let data = params as? Data
-                request.httpBody = data
-            } else if params is [String: Any] || params is [Any] {
-                let data = try? JSONSerialization.data(withJSONObject: params!, options: JSONSerialization.WritingOptions(rawValue: 0))
-                request.httpBody = data
-            } else if params is String {
-                let str = params as? String
-                let data = str?.data(using: .utf8)
-                request.httpBody = data
-            }
+        if useBody {
+            request.httpBody = httpBody
         }
         let startTime = Date().timeIntervalSince1970 * 1000.0
         let task = URLSession.shared.dataTask(with: request) { (data: Data?, response: URLResponse?, error: Error?) in
