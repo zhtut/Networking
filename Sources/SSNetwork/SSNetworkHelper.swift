@@ -23,6 +23,19 @@ public let SSTIMEOUT: TimeInterval = 10.0
 open class SSNetworkHelper: NSObject, URLSessionDelegate, URLSessionDataDelegate {
     
     @discardableResult
+    open class func sendRequest(urlStr: String,
+                                params: Any? = nil,
+                                header: [String: String]? = nil,
+                                method: SSHttpMethod = .GET,
+                                timeOut: TimeInterval = SSTIMEOUT,
+                                printLog: Bool = false) async -> SSResponse {
+        return await withCheckedContinuation({ continuation in
+            sendRequest(urlStr: urlStr, params: params, header: header, method: method, timeOut: timeOut, printLog: printLog) { response in
+                continuation.resume(returning: response)
+            }
+        })
+    }
+    
     /// 发送网络请求
     /// - Parameters:
     ///   - urlStr: url字符串
@@ -33,6 +46,7 @@ open class SSNetworkHelper: NSObject, URLSessionDelegate, URLSessionDataDelegate
     ///   - printLog: 打印日志，默认不打印
     ///   - completion: 完成的回调，Response必不为空
     /// - Returns: 返回\(URLSesstionDataTask)
+    @discardableResult
     open class func sendRequest(urlStr: String,
                                 params: Any? = nil,
                                 header: [String: String]? = nil,
