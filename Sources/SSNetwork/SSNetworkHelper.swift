@@ -15,6 +15,7 @@ public enum SSHttpMethod: String {
     case POST
     case DELETE
     case PUT
+    case PATCH
 }
 
 public let SSTIMEOUT: TimeInterval = 10.0
