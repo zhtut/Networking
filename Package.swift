@@ -11,4 +11,7 @@ let package = Package(name: "SSNetwork",
                       ],
                       targets: [
                         .target(name: "SSNetwork"),
+                        .testTarget(
+                            name: "SSNetworkTests",
+                            dependencies: ["SSNetwork"]),
                       ])

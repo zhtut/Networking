@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by zhtg on 2022/11/12.
 //
@@ -10,19 +10,19 @@ import Foundation
 import FoundationNetworking
 #endif
 
+public let kSSNetworkDefaultTimeOut: TimeInterval = 10.0
+
+/// 请求方法
+public enum SSHTTPMethod: String {
+    case GET
+    case POST
+    case DELETE
+    case PUT
+    case PATCH
+}
+
 /// 请求器
-public struct SSNetwork {
-    
-    public static let kNetworkDefaultTimeOut: TimeInterval = 10.0
-    
-    /// 请求方法
-    public enum HTTPMethod: String {
-        case get = "GET"
-        case post = "POST"
-        case delete = "DELETE"
-        case put = "PUT"
-        case patch = "PATCH"
-    }
+public extension SSResponsive {
     
     /// 发送一个网络请求
     /// - Parameters:
@@ -34,19 +34,24 @@ public struct SSNetwork {
     ///   - printLog: 是否打印日志，默认为false
     ///   - dataKey: 解析model的子键，使用.分隔
     ///   - modelType: 解析的model类型
-    /// - Returns: 返回请求的response，不管成功与否，这个response都会返回，请求的详细情况都在response中
-    public static func sendRequest(urlStr: String,
-                                   params: Any? = nil,
-                                   header: [String: String]? = nil,
-                                   method: HTTPMethod = .get,
-                                   timeOut: TimeInterval = kNetworkDefaultTimeOut,
-                                   printLog: Bool = false,
-                                   dataKey: String? = nil,
-                                   modelType: Decodable.Type? = nil) async -> Response {
+    /// - Returns: 返回请求的SSResponsive，不管成功与否，这个SSResponsive都会返回，请求的详细情况都在SSResponsive中
+    static func sendRequest(urlStr: String,
+                            params: Any? = nil,
+                            header: [String: String]? = nil,
+                            method: SSHTTPMethod = .GET,
+                            timeOut: TimeInterval = kSSNetworkDefaultTimeOut,
+                            printLog: Bool = false,
+                            dataKey: String? = nil,
+                            modelType: Decodable.Type? = nil) async -> Self {
         guard let url = URL(string: urlStr) else {
             print("URL生成失败，请检查URL是否正确：\(urlStr)")
             let now = Date().timeIntervalSince1970 * 1000.0
-            let response = Response(start: now, duration: now)
+            let response = Self(start: now,
+                                request: nil,
+                                body: nil,
+                                urlResponse: nil,
+                                error: nil,
+                                duration: now)
             return response
         }
         
@@ -66,24 +71,27 @@ public struct SSNetwork {
         
         // 开始请求
         let startTime = Date().timeIntervalSince1970 * 1000.0
-        var response: Response
+        var response: Self
         do {
             let result: (Data, URLResponse) = try await URLSession.shared.data(for: request)
             let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
-            response = Response(request: request,
-                                body: result.0,
-                                urlResponse: result.1 as? HTTPURLResponse,
-                                start: startTime,
-                                duration: duration)
+            response = Self(start: startTime,
+                            request: request,
+                            body: result.0,
+                            urlResponse: result.1 as? HTTPURLResponse,
+                            error: nil,
+                            duration: duration)
             if let modelType = modelType {
                 await response.decodeModel(dataKey: dataKey, modelType: modelType)
             }
         } catch {
             let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
-            response = Response(request: request,
-                                error: error,
-                                start: startTime,
-                                duration: duration)
+            response = Self(start: startTime,
+                            request: request,
+                            body: nil,
+                            urlResponse: nil,
+                            error: error,
+                            duration: duration)
         }
         if printLog {
             response.log()
@@ -95,7 +103,7 @@ public struct SSNetwork {
 extension URLRequest {
     mutating func integrate(params: Any?) async {
         guard let params = params else { return }
-        let useBody = (self.httpMethod != SSNetwork.HTTPMethod.get.rawValue)
+        let useBody = (self.httpMethod != SSHTTPMethod.GET.rawValue)
         if useBody {
             self.httpBody = await getHttpBody(params: params)
         } else {
