@@ -71,105 +71,116 @@ public extension SSResponsive {
         
         // 开始请求
         let startTime = Date().timeIntervalSince1970 * 1000.0
-        var response: Self
-        do {
-            let result: (Data, URLResponse) = try await URLSession.shared.data(for: request)
-            let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
-            response = Self(start: startTime,
-                            request: request,
-                            body: result.0,
-                            urlResponse: result.1 as? HTTPURLResponse,
-                            error: nil,
-                            duration: duration)
-            if let modelType = modelType {
-                await response.decodeModel(dataKey: dataKey, modelType: modelType)
+        
+        let response: Self = await withCheckedContinuation({ continuation in
+            sendRequest(request,
+                        startTime: startTime,
+                        printLog: printLog,
+                        dataKey: dataKey,
+                        modelType: modelType) { resp in
+                continuation.resume(returning: resp)
             }
-        } catch {
-            let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
-            response = Self(start: startTime,
-                            request: request,
-                            body: nil,
-                            urlResponse: nil,
-                            error: error,
-                            duration: duration)
-        }
+        })
+        
         if printLog {
             response.log()
         }
         return response
     }
-}
-
-extension URLRequest {
-    mutating func integrate(params: Any?) async {
-        guard let params = params else { return }
-        let useBody = (self.httpMethod != SSHTTPMethod.GET.rawValue)
-        if useBody {
-            self.httpBody = await getHttpBody(params: params)
-        } else {
-            if let urlString = self.url?.absoluteString {
-                let newURLString = await getURLString(url: urlString, params: params)
-                self.url = URL(string: newURLString)
+    
+    static func sendRequest(_ request: URLRequest,
+                            startTime: TimeInterval,
+                            printLog: Bool = false,
+                            dataKey: String? = nil,
+                            modelType: Decodable.Type? = nil,
+                            completion: @escaping (Self) -> Void) {
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
+            var ssResponse = Self(start: startTime,
+                                  request: request,
+                                  body: data,
+                                  urlResponse: response as? HTTPURLResponse,
+                                  error: error,
+                                  duration: duration)
+            if let _ = data, let modelType = modelType {
+                ssResponse.decodeModel(dataKey: dataKey, modelType: modelType)
             }
+            completion(ssResponse)
         }
+        task.resume()
     }
+}
     
-    func getHttpBody(params: Any?) async -> Data? {
-        guard let params = params else { return nil }
-        var httpBody: Data?
-        if params is Data {
-            httpBody = params as? Data
-        } else if JSONSerialization.isValidJSONObject(params) {
-            httpBody = try? JSONSerialization.data(withJSONObject: params)
-        } else if params is String {
-            let str = params as? String
-            httpBody = str?.data(using: .utf8)
-        }
-        return httpBody
-    }
-    
-    func getURLString(url: String, params: Any?) async -> String {
-        if params is [String: Any] {
-            let dic = params as! [String : Any]
-            var newURL = url
-            let str = dic.urlQueryStr
-            if str != nil {
-                if url.contains("?") {
-                    newURL = "\(newURL)&\(str!)"
-                } else {
-                    newURL = "\(newURL)?\(str!)"
+    extension URLRequest {
+        mutating func integrate(params: Any?) async {
+            guard let params = params else { return }
+            let useBody = (self.httpMethod != SSHTTPMethod.GET.rawValue)
+            if useBody {
+                self.httpBody = await getHttpBody(params: params)
+            } else {
+                if let urlString = self.url?.absoluteString {
+                    let newURLString = await getURLString(url: urlString, params: params)
+                    self.url = URL(string: newURLString)
                 }
             }
-            return newURL
         }
         
-        return url
-    }
-}
-
-public extension Dictionary {
-    /// URL参数拼接
-    var urlQueryStr: String? {
-        if count == 0 {
-            return nil
-        }
-        var paramStr: String?
-        for (key, value) in self {
-            let valueStr: String
-            if JSONSerialization.isValidJSONObject(value),
-               let data = try? JSONSerialization.data(withJSONObject: value, options: .init(rawValue: 0)),
-               let str = String(data: data, encoding: .utf8) {
-                valueStr = str.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            } else {
-                valueStr = "\(value)"
+        func getHttpBody(params: Any?) async -> Data? {
+            guard let params = params else { return nil }
+            var httpBody: Data?
+            if params is Data {
+                httpBody = params as? Data
+            } else if JSONSerialization.isValidJSONObject(params) {
+                httpBody = try? JSONSerialization.data(withJSONObject: params)
+            } else if params is String {
+                let str = params as? String
+                httpBody = str?.data(using: .utf8)
             }
-            let str = "\(key)=\(valueStr)"
-            if let last = paramStr {
-                paramStr = "\(last)&\(str)"
-            } else {
-                paramStr = str
-            }
+            return httpBody
         }
-        return paramStr
+        
+        func getURLString(url: String, params: Any?) async -> String {
+            if params is [String: Any] {
+                let dic = params as! [String : Any]
+                var newURL = url
+                let str = dic.urlQueryStr
+                if str != nil {
+                    if url.contains("?") {
+                        newURL = "\(newURL)&\(str!)"
+                    } else {
+                        newURL = "\(newURL)?\(str!)"
+                    }
+                }
+                return newURL
+            }
+            
+            return url
+        }
     }
-}
+    
+    public extension Dictionary {
+        /// URL参数拼接
+        var urlQueryStr: String? {
+            if count == 0 {
+                return nil
+            }
+            var paramStr: String?
+            for (key, value) in self {
+                let valueStr: String
+                if JSONSerialization.isValidJSONObject(value),
+                   let data = try? JSONSerialization.data(withJSONObject: value, options: .init(rawValue: 0)),
+                   let str = String(data: data, encoding: .utf8) {
+                    valueStr = str.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                } else {
+                    valueStr = "\(value)"
+                }
+                let str = "\(key)=\(valueStr)"
+                if let last = paramStr {
+                    paramStr = "\(last)&\(str)"
+                } else {
+                    paramStr = str
+                }
+            }
+            return paramStr
+        }
+    }

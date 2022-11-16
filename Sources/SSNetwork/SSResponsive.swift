@@ -183,7 +183,7 @@ extension SSResponsive {
 }
 
 extension SSResponsive {
-    mutating func decodeModel(dataKey: String?, modelType: Decodable.Type) async {
+    mutating func decodeModel(dataKey: String?, modelType: Decodable.Type) {
         self.dataKey = dataKey
         self.modelType = modelType
         
