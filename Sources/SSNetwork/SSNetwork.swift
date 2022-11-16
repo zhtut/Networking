@@ -1,0 +1,167 @@
+//
+//  File.swift
+//  
+//
+//  Created by zhtg on 2022/11/12.
+//
+
+import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
+/// 请求器
+public struct SSNetwork {
+    
+    public static let kNetworkDefaultTimeOut: TimeInterval = 10.0
+    
+    /// 请求方法
+    public enum HTTPMethod: String {
+        case get = "GET"
+        case post = "POST"
+        case delete = "DELETE"
+        case put = "PUT"
+        case patch = "PATCH"
+    }
+    
+    /// 发送一个网络请求
+    /// - Parameters:
+    ///   - urlStr: 请求的URL地址，不可为空
+    ///   - params: 请求的参数，可以是字典，数组，或者字符串，如果是get请求，仅支持字典，因为要放到url后面
+    ///   - header: header头，默认为空
+    ///   - method: 请求的http方法，默认为get
+    ///   - timeOut: 超时时间，默认为10秒
+    ///   - printLog: 是否打印日志，默认为false
+    ///   - dataKey: 解析model的子键，使用.分隔
+    ///   - modelType: 解析的model类型
+    /// - Returns: 返回请求的response，不管成功与否，这个response都会返回，请求的详细情况都在response中
+    public static func sendRequest(urlStr: String,
+                                   params: Any? = nil,
+                                   header: [String: String]? = nil,
+                                   method: HTTPMethod = .get,
+                                   timeOut: TimeInterval = kNetworkDefaultTimeOut,
+                                   printLog: Bool = false,
+                                   dataKey: String? = nil,
+                                   modelType: Decodable.Type? = nil) async -> Response {
+        guard let url = URL(string: urlStr) else {
+            print("URL生成失败，请检查URL是否正确：\(urlStr)")
+            let now = Date().timeIntervalSince1970 * 1000.0
+            let response = Response(start: now, duration: now)
+            return response
+        }
+        
+        // 创建请求
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: timeOut)
+        request.httpMethod = method.rawValue
+        
+        // 集成参数
+        await request.integrate(params: params)
+        
+        // 集成header
+        if let header = header {
+            for (key, value) in header {
+                request.addValue(value, forHTTPHeaderField: key)
+            }
+        }
+        
+        // 开始请求
+        let startTime = Date().timeIntervalSince1970 * 1000.0
+        var response: Response
+        do {
+            let result: (Data, URLResponse) = try await URLSession.shared.data(for: request)
+            let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
+            response = Response(request: request,
+                                body: result.0,
+                                urlResponse: result.1 as? HTTPURLResponse,
+                                start: startTime,
+                                duration: duration)
+            if let modelType = modelType {
+                await response.decodeModel(dataKey: dataKey, modelType: modelType)
+            }
+        } catch {
+            let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
+            response = Response(request: request,
+                                error: error,
+                                start: startTime,
+                                duration: duration)
+        }
+        if printLog {
+            response.log()
+        }
+        return response
+    }
+}
+
+extension URLRequest {
+    mutating func integrate(params: Any?) async {
+        guard let params = params else { return }
+        let useBody = (self.httpMethod != SSNetwork.HTTPMethod.get.rawValue)
+        if useBody {
+            self.httpBody = await getHttpBody(params: params)
+        } else {
+            if let urlString = self.url?.absoluteString {
+                let newURLString = await getURLString(url: urlString, params: params)
+                self.url = URL(string: newURLString)
+            }
+        }
+    }
+    
+    func getHttpBody(params: Any?) async -> Data? {
+        guard let params = params else { return nil }
+        var httpBody: Data?
+        if params is Data {
+            httpBody = params as? Data
+        } else if JSONSerialization.isValidJSONObject(params) {
+            httpBody = try? JSONSerialization.data(withJSONObject: params)
+        } else if params is String {
+            let str = params as? String
+            httpBody = str?.data(using: .utf8)
+        }
+        return httpBody
+    }
+    
+    func getURLString(url: String, params: Any?) async -> String {
+        if params is [String: Any] {
+            let dic = params as! [String : Any]
+            var newURL = url
+            let str = dic.urlQueryStr
+            if str != nil {
+                if url.contains("?") {
+                    newURL = "\(newURL)&\(str!)"
+                } else {
+                    newURL = "\(newURL)?\(str!)"
+                }
+            }
+            return newURL
+        }
+        
+        return url
+    }
+}
+
+public extension Dictionary {
+    /// URL参数拼接
+    var urlQueryStr: String? {
+        if count == 0 {
+            return nil
+        }
+        var paramStr: String?
+        for (key, value) in self {
+            let valueStr: String
+            if JSONSerialization.isValidJSONObject(value),
+               let data = try? JSONSerialization.data(withJSONObject: value, options: .init(rawValue: 0)),
+               let str = String(data: data, encoding: .utf8) {
+                valueStr = str.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            } else {
+                valueStr = "\(value)"
+            }
+            let str = "\(key)=\(valueStr)"
+            if let last = paramStr {
+                paramStr = "\(last)&\(str)"
+            } else {
+                paramStr = str
+            }
+        }
+        return paramStr
+    }
+}
