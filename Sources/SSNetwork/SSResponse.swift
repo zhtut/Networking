@@ -46,10 +46,12 @@ public struct SSResponse {
     
     /// 从哪个字段开始解析，使用.格式
     public var dataKey: String?
+    /// 数据对象，字典或者数组
+    private var _data: Any?
     /// 解析的类型
     public var modelType: Decodable.Type?
     /// 解析的model对象，可能是数组或之类的
-    public var model: Decodable?
+    public var model: Any?
 }
 
 extension SSResponse {
@@ -66,9 +68,27 @@ extension SSResponse {
     public var bodyJson: Any? {
         get async {
             guard let body = body else { return nil }
-            guard JSONSerialization.isValidJSONObject(body) else { return nil }
             let json = try? JSONSerialization.jsonObject(with: body)
             return json
+        }
+    }
+    
+    /// 返回的Data数据
+    public var data: Any? {
+        mutating get async {
+            if let data = _data {
+                return data
+            }
+            guard let json = await bodyJson else {
+                return nil
+            }
+            guard let key = dataKey,
+                  let dict = json as? [String: Any] else {
+                return json
+            }
+            let data = dict[key]
+            _data = data
+            return data
         }
     }
     
@@ -79,18 +99,9 @@ extension SSResponse {
 }
 
 extension SSResponse {
-    mutating func decodeModel(dataKey: String?, modelType: Decodable.Type) async {
-        self.dataKey = dataKey
-        self.modelType = modelType
-        
-        var json: Any?
-        if let dataKey = dataKey, let dict = await bodyJson as? [String: Any] {
-            json = dict[dataKey]
-        } else {
-            json = await bodyJson
-        }
-        
-        guard let json = json else { return }
+    mutating func decodeModel() async {
+        guard let json = await data else { return }
+        guard let modelType = self.modelType else { return }
         
         if let arr = json as? [Any] {
             var models = [Any]()
@@ -101,7 +112,7 @@ extension SSResponse {
                     models.append(model)
                 }
             }
-            self.model = models as? any Decodable
+            self.model = models
         } else if json is [String: Any],
                   let jsonData = try? JSONSerialization.data(withJSONObject: json) {
             self.model = try? JSONDecoder().decode(modelType.self, from: jsonData)
@@ -137,7 +148,7 @@ extension SSResponse {
             if message.hasSuffix(" \\") {
                 message = "\(message.prefix(message.count - 2))"
             }
-            message.append("\n------SSResponsive:\(response.duration)ms\n")
+            message.append("\n------Response:\(response.duration)ms\n")
             
             if let bodyString = await response.bodyString {
                 message.append("\(bodyString)")

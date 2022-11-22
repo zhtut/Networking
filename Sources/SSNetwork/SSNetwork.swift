@@ -82,9 +82,10 @@ public struct SSNetwork {
         })
         
         // 解析Model
-        
-        if response.succeed, let modelType = modelType {
-            await response.decodeModel(dataKey: dataKey, modelType: modelType)
+        response.dataKey = dataKey
+        response.modelType = modelType
+        if response.succeed, let _ = modelType {
+            await response.decodeModel()
         }
         
         if printLog {
