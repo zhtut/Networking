@@ -4,6 +4,6 @@ import XCTest
 final class SSNetworkTests: XCTestCase {
     
     func testRequest() async {
-        let _ = await SSResponse.sendRequest(urlStr: "https://www.baidu.com", printLog: true)
+        let _ = await SSNetwork.sendRequest(urlStr: "https://www.baidu.com", printLog: true)
     }
 }
