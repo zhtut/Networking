@@ -28,7 +28,6 @@ public enum Network {
         do {
             urlRequest = try URLRequest.from(request)
         } catch {
-//            return Fail(error: Response(error: error))
             return Just(Response(error: error))
                 .eraseToAnyPublisher()
         }
@@ -36,27 +35,14 @@ public enum Network {
         // 开始请求
         let startTime = Date().timeIntervalSince1970 * 1000.0
         let publisher = URLSession.shared.dataTaskPublisher(for: urlRequest)
-            .subscribe(on: DispatchQueue.global())
-            .receive(on: RunLoop.main)
-            .handleEvents { subscription in
-                print("收到subscription")
-            } receiveOutput: { _ in
-                print("收到输出")
-            } receiveCompletion: { completion in
-                print("输出完成")
-            } receiveCancel: {
-                print("收到取消")
-            } receiveRequest: { demand in
-                print("收到请求")
-            }
-            .print("Network-->:")
-            .map ({ out in
+            .map { out in
+                // 转换output为Response对象
                 let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
                 var res = Response(start: startTime,
-                                  duration: duration,
-                                  request: request,
-                                  body: out.data,
-                                  urlResponse: out.response as? HTTPURLResponse)
+                                   duration: duration,
+                                   request: request,
+                                   body: out.data,
+                                   urlResponse: out.response as? HTTPURLResponse)
                 // 解析Model
                 res.dataKey = request.dataKey
                 res.modelType = request.modelType
@@ -65,17 +51,26 @@ public enum Network {
                 }
 
                 return res
-            })
-            .catch({ error in
+            }
+            .catch { error in
+                // 转换error为Response对象
                 let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
                 let res = Response(start: startTime,
                                    duration: duration,
                                    request: request,
                                    error: error)
                 return Just(res)
-            })
-            .eraseToAnyPublisher()
+            }
 
-        return publisher
+        if request.printLog {
+            return publisher
+                .print("Network-->:")
+                .receive(on: RunLoop.main)
+                .eraseToAnyPublisher()
+        } else {
+            return publisher
+                .receive(on: RunLoop.main)
+                .eraseToAnyPublisher()
+        }
     }
 }
