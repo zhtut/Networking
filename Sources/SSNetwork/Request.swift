@@ -55,6 +55,26 @@ public struct Request {
     public var modelType: Decodable.Type? = nil
     public var datas: [FormData]?
 
+    public init(path: String,
+                method: HTTPMethod = .GET,
+                params: Any? = nil,
+                header: [String : String]? = nil,
+                timeOut: TimeInterval = kDefaultTimeOut,
+                printLog: Bool = true,
+                dataKey: String? = nil,
+                modelType: Decodable.Type? = nil,
+                datas: [FormData]? = nil) {
+        self.path = path
+        self.method = method
+        self.params = params
+        self.header = header
+        self.timeOut = timeOut
+        self.printLog = printLog
+        self.dataKey = dataKey
+        self.modelType = modelType
+        self.datas = datas
+    }
+
     /// 请求体描述
     public var paramsString: String {
         if let params {
