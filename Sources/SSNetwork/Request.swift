@@ -23,14 +23,14 @@ public enum HTTPMethod: String {
     case PATCH
 }
 
-public class FormData {
+open class FormData {
 
-    var name: String
-    var data: Data
-    var contentType: String?
-    var filename: String?
+    open var name: String
+    open var data: Data
+    open var contentType: String?
+    open var filename: String?
 
-    init(name: String, data: Data, contentType: String? = nil, filename: String? = nil) {
+    public init(name: String, data: Data, contentType: String? = nil, filename: String? = nil) {
         self.name = name
         self.data = data
         self.contentType = contentType
