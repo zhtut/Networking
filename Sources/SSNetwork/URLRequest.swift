@@ -10,6 +10,8 @@ import Foundation
 import FoundationNetworking
 #endif
 
+private let boundary = "wfWiEWrgEFA9A78512weF7106A";
+
 public extension URLRequest {
 
     static func from(_ request: Request) throws -> URLRequest {
@@ -25,9 +27,6 @@ public extension URLRequest {
         urlRequest.httpMethod = request.method.rawValue
         urlRequest.httpShouldHandleCookies = true
 
-        // 集成参数
-        urlRequest.integrate(params: request.params)
-
         // 集成header
         if let header = request.header {
             for (key, value) in header {
@@ -35,7 +34,55 @@ public extension URLRequest {
             }
         }
 
+        if let datas = request.datas {
+            // 集成参数
+            urlRequest.integrate(datas: datas)
+            urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        } else {
+            // 集成参数
+            urlRequest.integrate(params: request.params)
+        }
+
         return urlRequest
+    }
+
+    mutating func integrate(datas: [FormData]) {
+
+        var body = Data()
+        for data in datas {
+            if let start = "--\(boundary)\r\n".data(using: .utf8) {
+                body.append(start)
+            }
+            if let filename = data.filename {
+                let contentDisposition =
+                "Content-Disposition: form-data; name=\"\(data.name)\"; filename=\"\(filename)\"\r\n"
+                if let data = contentDisposition.data(using: .utf8) {
+                    body.append(data)
+                }
+            } else {
+                if let data = "Content-Disposition: form-data; file=\"\(data.name)\"\r\n".data(using: .utf8) {
+                    body.append(data)
+                }
+            }
+            if let contentType = data.contentType,
+               let data = "Content-Type: \(contentType)\r\n\r\n".data(using: .utf8) {
+                body.append(data)
+            } else if let line = "\r\n".data(using: .utf8) {
+                body.append(line)
+            }
+
+            body.append(data.data)
+        }
+
+        if let line = "\r\n".data(using: .utf8) {
+            body.append(line)
+        }
+
+        if let end = "--\(boundary)--\r\n".data(using: .utf8) {
+            body.append(end)
+        }
+
+        self.httpBody = body
     }
 
     mutating func integrate(params: Any?) {

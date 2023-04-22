@@ -23,6 +23,21 @@ public enum HTTPMethod: String {
     case PATCH
 }
 
+public class FormData {
+
+    var name: String
+    var data: Data
+    var contentType: String?
+    var filename: String?
+
+    init(name: String, data: Data, contentType: String? = nil, filename: String? = nil) {
+        self.name = name
+        self.data = data
+        self.contentType = contentType
+        self.filename = filename
+    }
+}
+
 public struct Request {
     public static var baseURL = ""
 
@@ -38,6 +53,7 @@ public struct Request {
     public var printLog: Bool = true
     public var dataKey: String? = nil
     public var modelType: Decodable.Type? = nil
+    public var datas: [FormData]?
 
     /// 请求体描述
     public var paramsString: String {
