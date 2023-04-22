@@ -13,7 +13,19 @@ import Combine
 private var NSObjectSubscribersSetKey = 0
 private var NSObjectSubscriptionKey = 0
 
-public extension NSObject {
+public protocol CancellableObject {
+    var subscription: AnyCancellable? { get set }
+    var subscriptionSet: Set<AnyCancellable>  { get set }
+}
+
+class SetObject: NSObject {
+    var set: Set<AnyCancellable> = []
+    weak var object: NSObject?
+}
+
+private var setObjects = [SetObject]()
+
+public extension CancellableObject {
     
     /// 保存单个可取消的订阅
     var subscription: AnyCancellable? {
@@ -39,4 +51,8 @@ public extension NSObject {
             objc_setAssociatedObject(self, &NSObjectSubscribersSetKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
+}
+
+extension NSObject: CancellableObject {
+
 }

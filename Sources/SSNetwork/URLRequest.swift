@@ -17,7 +17,7 @@ public extension URLRequest {
     static func from(_ request: Request) throws -> URLRequest {
         guard let url = URL(string: request.urlStr) else {
             print("URL生成失败，请检查URL是否正确：\(request.urlStr)")
-            throw NetworkError.urlInvalid(request.urlStr)
+            throw URLError(.badURL)
         }
 
         // 创建请求

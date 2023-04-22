@@ -12,12 +12,6 @@ import Combine
 import FoundationNetworking
 #endif
 
-public enum NetworkError: Error {
-    case urlInvalid(_ invalidURL: String)
-    case systemError(_ error: Error)
-    case serverError(_ code: Int, _ reason: String)
-}
-
 public enum Network {
 
     /// 发送一个网络请求
