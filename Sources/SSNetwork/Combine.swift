@@ -28,7 +28,7 @@ public extension NSObject {
     /// 保存一组订阅的集合
     var subscriptionSet: Set<AnyCancellable> {
         get {
-            // 这里用问题角包会崩溃，用感叹号倒可以，果然人不能太好说话，要不然系统都欺负你，必须给他强硬些，让他怕
+            // 这里用问号判断会崩溃，用感叹号倒可以，果然人不能太好说话，要不然系统都欺负你，必须给他强硬些，让他怕
             if let obj = objc_getAssociatedObject(self, &NSObjectSubscribersSetKey) {
                 let set = obj as! Set<AnyCancellable>
                 return set

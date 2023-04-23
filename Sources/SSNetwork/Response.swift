@@ -164,43 +164,41 @@ extension Response {
 extension Response {
     /// 请求的日志信息，组装成crul命令了，可以复制到cmd中再次调用
     public var description: String {
-        get async {
-            guard let request = request else {
-                return ""
-            }
-            var response = self
-            let urlStr = request.urlStr
-            let headerFields = request.header
-            let method = request.method
-            let httpBodyStr = request.paramsString
-            var message = ">>>>>>>>>>Start:\(response.start.dateDesc ?? "")"
-            message.append("\ncurl -X \(method) \"\(urlStr)\" \\")
-            if headerFields != nil {
-                for (key, value) in headerFields! {
-                    message.append("\n -H \"\(key):\(value)\" \\")
-                }
-            }
-            if httpBodyStr.count > 0 {
-                message.append("\n -d \"\(httpBodyStr)\"")
-            }
-            if message.hasSuffix(" \\") {
-                message = "\(message.prefix(message.count - 2))"
-            }
-            message.append("\n------Response:\(response.duration)ms\n")
-
-            if let bodyString = response.bodyString {
-                message.append("\(bodyString)")
-            } else if let error = response.error {
-                message.append("\(error)")
-            }
-            message.append("\nEnd<<<<<<<<<<")
-            return message
+        guard let request = request else {
+            return ""
         }
+        var response = self
+        let urlStr = request.urlStr
+        let headerFields = request.header
+        let method = request.method
+        let httpBodyStr = request.paramsString
+        var message = ">>>>>>>>>>Start:\(response.start.dateDesc ?? "")"
+        message.append("\ncurl -X \(method) \"\(urlStr)\" \\")
+        if headerFields != nil {
+            for (key, value) in headerFields! {
+                message.append("\n -H \"\(key):\(value)\" \\")
+            }
+        }
+        if httpBodyStr.count > 0 {
+            message.append("\n -d \"\(httpBodyStr)\"")
+        }
+        if message.hasSuffix(" \\") {
+            message = "\(message.prefix(message.count - 2))"
+        }
+        message.append("\n------Response:\(response.duration)ms\n")
+
+        if let bodyString = response.bodyString {
+            message.append("\(bodyString)")
+        } else if let error = response.error {
+            message.append("\(error)")
+        }
+        message.append("\nEnd<<<<<<<<<<")
+        return message
     }
 
     /// 打印日志信息，方便查看问题
-    public func log() async {
-        print(await description)
+    public func log() {
+        print(description)
     }
 }
 

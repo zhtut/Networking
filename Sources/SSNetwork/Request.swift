@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Combine
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -89,5 +90,20 @@ public struct Request {
             }
         }
         return ""
+    }
+
+    var urlRequestPublisher: AnyPublisher<URLRequest, Error> {
+        return Future { promise in
+            DispatchQueue.global().async {
+                var urlRequest: URLRequest
+                do {
+                    urlRequest = try URLRequest.from(self)
+                    promise(.success(urlRequest))
+                } catch {
+                    promise(.failure(error))
+                }
+            }
+        }
+        .eraseToAnyPublisher()
     }
 }
