@@ -13,19 +13,7 @@ import Combine
 private var NSObjectSubscribersSetKey = 0
 private var NSObjectSubscriptionKey = 0
 
-public protocol CancellableObject {
-    var subscription: AnyCancellable? { get set }
-    var subscriptionSet: Set<AnyCancellable>  { get set }
-}
-
-class SetObject: NSObject {
-    var set: Set<AnyCancellable> = []
-    weak var object: NSObject?
-}
-
-private var setObjects = [SetObject]()
-
-public extension CancellableObject {
+public extension NSObject {
     
     /// 保存单个可取消的订阅
     var subscription: AnyCancellable? {
@@ -36,11 +24,13 @@ public extension CancellableObject {
             objc_setAssociatedObject(self, &NSObjectSubscriptionKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
-
+    
     /// 保存一组订阅的集合
     var subscriptionSet: Set<AnyCancellable> {
         get {
-            if let set = objc_getAssociatedObject(self, &NSObjectSubscribersSetKey) as? Set<AnyCancellable> {
+            // 这里用问题角包会崩溃，用感叹号倒可以，果然人不能太好说话，要不然系统都欺负你，必须给他强硬些，让他怕
+            if let obj = objc_getAssociatedObject(self, &NSObjectSubscribersSetKey) {
+                let set = obj as! Set<AnyCancellable>
                 return set
             }
             let set = Set<AnyCancellable>()
@@ -51,8 +41,4 @@ public extension CancellableObject {
             objc_setAssociatedObject(self, &NSObjectSubscribersSetKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
-}
-
-extension NSObject: CancellableObject {
-
 }
