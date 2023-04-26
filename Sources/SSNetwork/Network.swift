@@ -36,6 +36,13 @@ public enum Network {
                                            request: request,
                                            body: out.data,
                                            urlResponse: out.response as? HTTPURLResponse)
+                        // 如果配置有解密方法，则优先用解密方法解密一下
+                        if let decrypt = Response.decryptPublisher {
+                            _ = decrypt(res)
+                                .sink { body in
+                                    res.body = body
+                                }
+                        }
                         // 解析Model
                         res.dataKey = request.dataKey
                         res.modelType = request.modelType
@@ -68,7 +75,7 @@ public enum Network {
                 let res = Response(error: error)
                 return Just(res)
             }
-            // 回调放到主线程，防止卡顿
+            // 回调放到主线程，防止子线程调用UI
             .receive(on: RunLoop.main)
             .eraseToAnyPublisher()
     }

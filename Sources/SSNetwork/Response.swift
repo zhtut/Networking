@@ -9,6 +9,7 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+import Combine
 
 /// 默认实现的一个Model
 public struct Response: Error {
@@ -72,6 +73,9 @@ public struct Response: Error {
     public var modelType: Decodable.Type?
     /// 解析的model对象，可能是数组或之类的
     public var model: Any?
+
+    // 解密方法
+    public static var decryptPublisher: ((Response) -> AnyPublisher<Data?, Never>)?
 }
 
 extension Response {
@@ -198,7 +202,9 @@ extension Response {
 
     /// 打印日志信息，方便查看问题
     public func log() {
-        print(description)
+        DispatchQueue.global().async {
+            print(description)
+        }
     }
 }
 
