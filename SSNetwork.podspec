@@ -17,17 +17,18 @@ Pod::Spec.new do |s|
 
   s.source       = { :git => "https://github.com/zhtut/SSNetwork.git", :tag => "#{s.version}" }
 
-  s.source_files  = "Sources/**/*.swift"
-  s.module_name   = 'SSNetwork'
-  s.swift_version = "5.0"
-
   s.ios.deployment_target = "9.0"
   s.osx.deployment_target = '10.12'
+
+  s.source_files  = "Sources/**/*.swift"
+  s.swift_version = "5.0"
 
   # ――― Project Linking ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
   #
   #  Link your library with frameworks, or libraries. Libraries do not include
   #  the lib prefix of their name.
   #
+
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'ENABLE_MODULE_VERIFIER' => 'YES' }
 
 end

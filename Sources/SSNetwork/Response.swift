@@ -190,7 +190,9 @@ extension Response {
             message = "\(message.prefix(message.count - 2))"
         }
         message.append("\n------Response:\(response.duration)ms\n")
-
+        if let urlResponse = response.urlResponse {
+            message.append("StatusCode:\(urlResponse.statusCode)\n")
+        }
         if let bodyString = response.bodyString {
             message.append("\(bodyString)")
         } else if let error = response.error {
