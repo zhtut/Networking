@@ -9,11 +9,13 @@ import Foundation
 import CommonCrypto
 
 public struct SSLPinning {
+    /// 域名
     public var host: String
-    public var certHashes: [String]
-    public init(host: String, certHashes: [String]) {
+    /// 证书256指纹，大写64位
+    public var sha256s: [String]
+    public init(host: String, sha256s: [String]) {
         self.host = host
-        self.certHashes = certHashes
+        self.sha256s = sha256s
     }
 }
 
@@ -56,25 +58,13 @@ public final class ChallengeHandler: NSObject {
             return
         }
 
-        var policies = [SecPolicy]()
-        policies.append(SecPolicyCreateBasicX509())
-
-        SecTrustSetPolicies(serverTrust, policies as CFArray);
-
-        var trustedPublicKeyCount = 0
-
-        let publicKeys = certificateTrustChainForServerTrust(serverTrust)
-
-        // 子证书匹配数量
-        for publicKey in publicKeys {
-            if let sha256 = publicKey.headSha256,
-               pinning.certHashes.contains(sha256) {
-                trustedPublicKeyCount += 1
-            }
+        guard let serverTrustSha256 = serverTrust.sha256 else {
+            completionHandler(.performDefaultHandling, nil)
+            return
         }
 
-        // 数量要大于或等于配置的数量
-        if trustedPublicKeyCount >= pinning.certHashes.count {
+        // 从serverTrust copy出的第一个证书，就是我们的域名证书，取这个证书的data进行sha256，就能匹配上我们预置的sha256指纹
+        if pinning.sha256s.contains(serverTrustSha256) {
             let credential = URLCredential(trust: serverTrust)
             completionHandler(.useCredential, credential)
             return
@@ -82,108 +72,61 @@ public final class ChallengeHandler: NSObject {
 
         completionHandler(.cancelAuthenticationChallenge, nil)
     }
-
-    func certificateTrustChainForServerTrust(_ serverTrust: SecTrust) -> [SecKey] {
-        var trustChain = [SecKey]()
-
-        let rootPublicKey: SecKey?
-        if #available(iOS 14.0, *) {
-            rootPublicKey = SecTrustCopyKey(serverTrust)
-        } else {
-            rootPublicKey = SecTrustCopyPublicKey(serverTrust)
-        }
-        if let rootPublicKey = rootPublicKey {
-            trustChain.append(rootPublicKey)
-        }
-
-        let certificateCount = SecTrustGetCertificateCount(serverTrust)
-
-        for i in 0..<certificateCount {
-            let certificate = SecTrustGetCertificateAtIndex(serverTrust, i)
-
-            let certificates = [certificate]
-
-            let policy = SecPolicyCreateBasicX509()
-            var trust: SecTrust?
-            SecTrustCreateWithCertificates(certificates as CFTypeRef, policy, &trust)
-
-            if let trust = trust {
-
-                var error: CFError?
-                if SecTrustEvaluateWithError(trust, &error) {
-                    let publicKey: SecKey?
-                    if #available(iOS 14.0, *) {
-                        publicKey = SecTrustCopyKey(trust)
-                    } else {
-                        publicKey = SecTrustCopyPublicKey(trust)
-                    }
-                    if let publicKey = publicKey {
-                        trustChain.append(publicKey)
-                    }
-                }
-            }
-        }
-
-        return trustChain
-    }
 }
 
-extension Data {
-    var sha256: Data {
+public extension Data {
+    var hex: String {
+        return map { String(format: "%02hhX", $0) }.joined()
+    }
+
+    var sha256: String {
         let data = self
-        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-        data.withUnsafeBytes {
-            _ = CC_SHA256($0.baseAddress, CC_LONG(data.count), &hash)
+
+        // 创建一个指向内存缓冲区的指针，用于存储哈希结果
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: Int(CC_SHA256_DIGEST_LENGTH))
+        defer { buffer.deallocate() }
+
+        // 计算哈希值
+        _ = data.withUnsafeBytes {
+            CC_SHA256($0.baseAddress, CC_LONG(data.count), buffer)
         }
-        let out = Data(hash)
-        return out
+
+        // 将哈希结果转换为 Data 对象
+        let hashData = Data(bytes: buffer, count: Int(CC_SHA256_DIGEST_LENGTH))
+        return hashData.hex
     }
 }
 
-extension SecKey {
-    static var _header: Data?
-    static var header: Data? {
-        if let _header = _header {
-            return _header
+
+extension SecTrust {
+    /// 获取第一个证书
+    var certificate: Data? {
+        let certsCount = SecTrustGetCertificateCount(self)
+        guard certsCount > 0 else {
+            return nil
         }
-        let str = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A"
-        if let data = str.data(using: .utf8),
-           let decode = Data(base64Encoded: data, options: .ignoreUnknownCharacters) {
-            _header = decode
-            return decode
-        }
-        return nil
-    }
-    var headSha256: String? {
-        var error: Unmanaged<CFError>?
-        if var data = SecKeyCopyExternalRepresentation(self, &error) as? Data {
-            if let header = Self.header {
-                data.insert(contentsOf: header, at: 0)
-                let sha256Data = data.sha256
-                let base64 = sha256Data.base64EncodedString(options: .lineLength64Characters)
-                return base64
+        var cert: SecCertificate
+        if #available(iOS 15.0, macOS 12.0, *) {
+            guard let certs = SecTrustCopyCertificateChain(self) as? [SecCertificate],
+                  let ccc = certs.first else {
+                return nil
             }
+            cert = ccc
         } else {
-            print("seckey 转换成data失败：\(error)")
+            // Fallback on earlier versions
+            guard let ccc = SecTrustGetCertificateAtIndex(self, 0) else {
+                return nil
+            }
+            cert = ccc
         }
-        return nil
+        let data = SecCertificateCopyData(cert) as Data
+        return data
+    }
+
+    var hex: String? {
+        certificate?.hex
     }
     var sha256: String? {
-        var error: Unmanaged<CFError>?
-        if var data = SecKeyCopyExternalRepresentation(self, &error) as? Data {
-            let sha256Data = data.sha256
-            let hex = sha256Data.upperHex
-            return hex
-        } else {
-            print("seckey 转换成data失败：\(error)")
-        }
-        return nil
-    }
-}
-
-
-private extension Sequence where Element == UInt8 {
-    var upperHex: String {
-        return reduce("") {$0 + String(format: "%02X", $1)}
+        certificate?.sha256
     }
 }
