@@ -1,24 +1,24 @@
 
 Pod::Spec.new do |s| 
 
-  s.name         = "SSNetwork"
+  s.name         = "NetCore"
   s.version      = "1.0.1"
-  s.summary      = " 网络工具库 "
+  s.summary      = " ios的网络工具库，使用combine框架作为回调 "
 
   s.description  = <<-DESC
-    网络工具库 
+    ios的网络工具库，使用combine框架作为回调
                    DESC
 
-  s.homepage     = "https://github.com/zhtut/SSNetwork.git"
+  s.homepage     = "https://github.com/zhtut/NetCore.git"
 
   s.license        = { :type => 'MIT', :file => 'LICENSE' }
 
   s.author             = { "zhtg" => "zhtg@icloud.com" }
 
-  s.source       = { :git => "https://github.com/zhtut/SSNetwork.git", :tag => "#{s.version}" }
+  s.source       = { :git => "https://github.com/zhtut/NetCore.git", :tag => "#{s.version}" }
 
-  s.ios.deployment_target = "9.0"
-  s.osx.deployment_target = '10.12'
+  s.ios.deployment_target = "14.0"
+  s.osx.deployment_target = '12.0'
 
   s.source_files  = "Sources/**/*.swift"
   s.swift_version = "5.0"

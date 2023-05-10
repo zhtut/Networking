@@ -12,7 +12,7 @@ import Combine
 import FoundationNetworking
 #endif
 
-public enum Network {
+public enum NetCore {
 
     /// 发送一个网络请求
     public static func publisherWith(request: Request) -> AnyPublisher<Response, Never> {
@@ -72,7 +72,10 @@ public enum Network {
             .catch { error in
                 // 转换error为Response对象，这里的错误还是生成Request的错误
                 let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
-                let res = Response(error: error)
+                let res = Response(start: startTime,
+                                   duration: duration,
+                                   request: request,
+                                   error: error)
                 return Just(res)
             }
             // 回调放到主线程，防止子线程调用UI

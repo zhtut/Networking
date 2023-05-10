@@ -28,6 +28,7 @@ open class ThreadSafeDictionary {
         }
     }
 
+    @discardableResult
     open func removeValue(forKey key: String) -> Any? {
         var value: Any?
         queue.async(flags: .barrier) {
@@ -42,6 +43,7 @@ open class ThreadSafeDictionary {
         }
     }
 
+    @discardableResult
     open func remove(at index: DictionaryType.Index) -> DictionaryType.Element {
         var element: Dictionary<String, Any>.Element!
         queue.async(flags: .barrier) {

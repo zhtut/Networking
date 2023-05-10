@@ -1,10 +1,10 @@
 import XCTest
-@testable import SSNetwork
+@testable import NetCore
 
-final class SSNetworkTests: XCTestCase {
+final class NetCoreTests: XCTestCase {
     func testRequest() {
         let expectation = XCTestExpectation(description: debugDescription)
-        Network.publisherWith(request: Request(path: "https://www.baidu.com"))
+        NetCore.publisherWith(request: Request(path: "https://www.baidu.com"))
             .sink { response in
                 var response = response
                 if response.succeed {

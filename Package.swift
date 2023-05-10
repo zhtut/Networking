@@ -1,17 +1,17 @@
-// swift-tools-version:5.6
+// swift-tools-version:5.8
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
-let package = Package(name: "SSNetwork",
-                      platforms: [ .iOS(.v13),
-                                   .macOS(.v10_15) ],
+let package = Package(name: "NetCore",
+                      platforms: [ .iOS(.v14),
+                                   .macOS(.v11) ],
                       products: [
-                        .library(name: "SSNetwork", targets: ["SSNetwork"]),
+                        .library(name: "NetCore", targets: ["NetCore"]),
                       ],
                       targets: [
-                        .target(name: "SSNetwork"),
+                        .target(name: "NetCore"),
                         .testTarget(
-                            name: "SSNetworkTests",
-                            dependencies: ["SSNetwork"]),
+                            name: "NetCoreTests",
+                            dependencies: ["NetCore"]),
                       ])
