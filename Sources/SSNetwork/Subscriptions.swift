@@ -13,6 +13,19 @@ import Combine
 private var NSObjectSubscribersSetKey = 0
 private var NSObjectSubscriptionKey = 0
 
+extension Publisher where Self.Failure == Never {
+    public func onceSink(receiveValue: @escaping ((Self.Output) -> Void)) {
+        let key = UUID().uuidString
+        let subscription = sink { output in
+            receiveValue(output)
+            safeDict.removeValue(forKey: key)
+        }
+        safeDict[key] = subscription
+    }
+}
+
+let safeDict = ThreadSafeDictionary()
+
 public extension NSObject {
     
     /// 保存单个可取消的订阅

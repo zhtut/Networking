@@ -172,7 +172,11 @@ extension Response {
             return ""
         }
         var response = self
-        let urlStr = request.urlStr
+        var urlStr = request.urlStr
+        if let urlResponse = response.urlResponse,
+            let responseURL = urlResponse.url?.absoluteString {
+            urlStr = responseURL
+        }
         let headerFields = request.header
         let method = request.method
         let httpBodyStr = request.paramsString
@@ -183,7 +187,8 @@ extension Response {
                 message.append("\n -H \"\(key):\(value)\" \\")
             }
         }
-        if httpBodyStr.count > 0 {
+        if request.method != .GET,
+           httpBodyStr.count > 0 {
             message.append("\n -d \"\(httpBodyStr)\"")
         }
         if message.hasSuffix(" \\") {

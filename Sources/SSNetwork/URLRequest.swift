@@ -35,7 +35,7 @@ public extension URLRequest {
         }
 
         if let datas = request.datas {
-            // 集成参数
+            // 集成参数，FromData
             urlRequest.integrate(datas: datas)
             urlRequest.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         } else {
@@ -116,12 +116,11 @@ public extension URLRequest {
         if params is [String: Any] {
             let dic = params as! [String : Any]
             var newURL = url
-            let str = dic.urlQueryStr
-            if str != nil {
+            if let str = dic.urlQueryStr {
                 if url.contains("?") {
-                    newURL = "\(newURL)&\(str!)"
+                    newURL = "\(newURL)&\(str)"
                 } else {
-                    newURL = "\(newURL)?\(str!)"
+                    newURL = "\(newURL)?\(str)"
                 }
             }
             return newURL
@@ -137,23 +136,24 @@ public extension Dictionary {
         if count == 0 {
             return nil
         }
-        var paramStr: String?
+
+        var components = URLComponents()
+        var queryItems = [URLQueryItem]()
         for (key, value) in self {
             let valueStr: String
             if JSONSerialization.isValidJSONObject(value),
                let data = try? JSONSerialization.data(withJSONObject: value, options: .init(rawValue: 0)),
                let str = String(data: data, encoding: .utf8) {
-                valueStr = str.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                valueStr = str
             } else {
                 valueStr = "\(value)"
             }
-            let str = "\(key)=\(valueStr)"
-            if let last = paramStr {
-                paramStr = "\(last)&\(str)"
-            } else {
-                paramStr = str
-            }
+            queryItems.append(.init(name: "\(key)", value: valueStr))
         }
-        return paramStr
+        components.queryItems = queryItems
+        if let query = components.query {
+            return query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+        }
+        return nil
     }
 }

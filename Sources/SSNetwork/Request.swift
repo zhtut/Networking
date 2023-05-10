@@ -43,7 +43,10 @@ public struct Request {
     public static var baseURL = ""
 
     public var urlStr: String {
-        Request.baseURL + path
+        if path.hasPrefix("http") {
+            return path
+        }
+        return Request.baseURL + path
     }
 
     public var path: String

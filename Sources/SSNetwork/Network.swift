@@ -27,7 +27,7 @@ public enum Network {
             })
             // 这里数据是URLRequst, 错误是URLError，map会把数据进行转换，这里转换成另一个publisher
             .map { urlRequest -> AnyPublisher<Response, Never> in
-                return URLSession.shared.dataTaskPublisher(for: urlRequest)
+                return SessionManager.shared.session.dataTaskPublisher(for: urlRequest)
                     .map { out in
                         // 转换output为Response对象
                         let duration = Date().timeIntervalSince1970 * 1000.0 - startTime
