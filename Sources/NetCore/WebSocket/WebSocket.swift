@@ -11,28 +11,43 @@ import FoundationNetworking
 #endif
 import Combine
 
+/// 使用系统的URLSessionWebSocketTask实现的WebSocket客户端
 @available(iOS 13.0, *)
 @available(macOS 10.15, *)
-/// 使用系统的URLSessionWebSocketTask实现的WebSocket客户端
 open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     
     /// url地址
     open var url: URL? {
-        return request.url
+        didSet {
+            if let url, request?.url != url {
+                request = URLRequest(url: url)
+            }
+        }
     }
     
     /// 请求对象
-    open private(set) var request: URLRequest
+    open var request: URLRequest? {
+        didSet {
+            if url != request?.url {
+                url = request?.url
+            }
+        }
+    }
     
     /// 代理
+    open var onWillOpenPublisher = PassthroughSubject<Void, Never>()
     open var onOpenPublisher = PassthroughSubject<Void, Never>()
     open var onPongPublisher = PassthroughSubject<Void, Never>()
     open var onDataPublisher = PassthroughSubject<Data, Never>()
     open var onErrorPublisher = PassthroughSubject<Error, Never>()
     open var onClosePublisher = PassthroughSubject<(Int, String?), Never>()
+
+    private var onReopenPublisher = PassthroughSubject<Void, Never>()
     
     /// 请求task，保持长连接的task
     private var task: URLSessionWebSocketTask?
+
+    private var publisherQueue = DispatchQueue(label: "publisherQueue", attributes: .concurrent)
     
     /// 连接状态
     open var state: URLSessionTask.State {
@@ -44,24 +59,51 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
 
     /// 自动重连接
     open var autoReconnect = true
+    var lastConnectTime = 0.0
+    var retryDuration = 10.0
     
     public init(url: URL) {
-        self.request = URLRequest(url: url)
         super.init()
+        self.url = url
+        setup()
     }
     
     public init(request: URLRequest) {
-        self.request = request
         super.init()
+        self.request = request
+        setup()
+    }
+
+    public override init() {
+        super.init()
+        setup()
+    }
+
+    open func setup() {
+        onReopenPublisher
+            .throttle(for: 6, scheduler: delegateQueue, latest: true)
+            .sink { [weak self] in
+                guard let self else { return }
+                webSocketPrint("重新连接")
+                self.open()
+            }
+            .store(in: &subscriptionSet)
     }
     
     /// 开始连接
     open func open() {
         if state == .running {
+            webSocketPrint("state为running，不需要连接")
+            return
+        }
+        self.onWillOpenPublisher.send()
+        guard let request else {
+            webSocketPrint("连接时发现错误，没有URLRequest")
             return
         }
         task = session.webSocketTask(with: request)
         task?.maximumMessageSize = 4096
+        webSocketPrint("开始连接")
         task?.resume()
     }
     
@@ -77,12 +119,20 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     /// 发送字符串
     /// - Parameter string: 要发送的字符串
     open func send(string: String) async throws {
+        guard state == .running else {
+            webSocketPrint("连接没有成功，发送失败")
+            return
+        }
         try await task?.send(.string(string))
     }
     
     /// 发送data
     /// - Parameter data: 要发送的data
     open func send(data: Data) async throws {
+        guard state == .running else {
+            webSocketPrint("连接没有成功，发送失败")
+            return
+        }
         try await task?.send(.data(data))
     }
     
@@ -104,17 +154,23 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
         switch message {
         case .string(let string):
             if let data = string.data(using: .utf8) {
-                onDataPublisher.send(data)
+                publisherQueue.async {
+                    self.onDataPublisher.send(data)
+                    webSocketPrint("收到string:\(string)")
+                }
             }
         case .data(let data):
-            onDataPublisher.send(data)
+            publisherQueue.async {
+                self.onDataPublisher.send(data)
+                webSocketPrint("收到data: \(String(data: data, encoding: .utf8) ?? "")")
+            }
         }
 
         try await receive()
     }
     
     public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
-        webScoketPrint("didBecomeInvalidWithError:\(error?.localizedDescription ?? "")")
+        webSocketPrint("didBecomeInvalidWithError:\(error?.localizedDescription ?? "")")
         var code = -1
         if let nsError = error as? NSError {
             code = nsError.code
@@ -125,17 +181,19 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         if error != nil {
-            webScoketPrint("didCompleteWithError:\(error?.localizedDescription ?? "")")
+            webSocketPrint("didCompleteWithError:\(error?.localizedDescription ?? "")")
         }
         
         if let err = error as NSError?,
             err.code == 57 {
-            webScoketPrint("读取数据失败，连接已中断：\(err)")
+            webSocketPrint("读取数据失败，连接已中断：\(err)")
             didClose(code: err.code, reason: err.localizedDescription)
             return
         }
         if let error {
-            onErrorPublisher.send(error)
+            publisherQueue.async {
+                self.onErrorPublisher.send(error)
+            }
         }
         if autoReconnect {
             reConnect()
@@ -143,8 +201,10 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     }
     
     public func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-        webScoketPrint("webSocketTask:didOpenWithProtocol:\(`protocol` ?? "")")
-        onOpenPublisher.send()
+        webSocketPrint("webSocketTask:didOpenWithProtocol:\(`protocol` ?? "")")
+        publisherQueue.async {
+            self.onOpenPublisher.send()
+        }
         Task {
             do {
                 try await self.receive()
@@ -159,7 +219,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
                            webSocketTask: URLSessionWebSocketTask,
                            didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
                            reason: Data?) {
-        webScoketPrint("urlSession:didCloseWith:\(closeCode)")
+        webSocketPrint("urlSession:didCloseWith:\(closeCode)")
         var r = ""
         if let d = reason {
             r = String(data: d, encoding: .utf8) ?? ""
@@ -169,7 +229,9 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     }
     
     func didClose(code: Int, reason: String?) {
-        onClosePublisher.send((code, reason))
+        publisherQueue.async {
+            self.onClosePublisher.send((code, reason))
+        }
         task = nil
         if autoReconnect {
             reConnect()
@@ -177,14 +239,11 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     }
 
     func reConnect() {
-        if state != .running {
-            print("一秒后重新连接")
-            let time = Date().addingTimeInterval(1)
-            let type = OperationQueue.SchedulerTimeType(time)
-            delegateQueue.schedule(after: type) {
-                print("重新连接")
-                self.open()
-            }
+        webSocketPrint("尝试重新连接")
+        if state == .running {
+            webSocketPrint("当前状态是连接中，不用重连")
+            return
         }
+        onReopenPublisher.send()
     }
 }

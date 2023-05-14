@@ -19,6 +19,6 @@ public enum WebSocketState {
     case closed
 }
 
-public func webScoketPrint(_ msg: String) {
+public func webSocketPrint(_ msg: String) {
     print("Websocket-->:\(msg)")
 }
