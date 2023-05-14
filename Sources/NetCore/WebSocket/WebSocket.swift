@@ -9,6 +9,7 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+import Combine
 
 @available(iOS 13.0, *)
 @available(macOS 10.15, *)
@@ -24,7 +25,11 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     open private(set) var request: URLRequest
     
     /// 代理
-    open weak var delegate: WebSocketDelegate?
+    open var onOpenPublisher = PassthroughSubject<Void, Never>()
+    open var onPongPublisher = PassthroughSubject<Void, Never>()
+    open var onDataPublisher = PassthroughSubject<Data, Never>()
+    open var onErrorPublisher = PassthroughSubject<Error, Never>()
+    open var onClosePublisher = PassthroughSubject<(Int, String?), Never>()
     
     /// 请求task，保持长连接的task
     private var task: URLSessionWebSocketTask?
@@ -98,9 +103,11 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
         let message = try await task.receive()
         switch message {
         case .string(let string):
-            delegate?.webSocket(didReceiveMessageWith: string)
+            if let data = string.data(using: .utf8) {
+                onDataPublisher.send(data)
+            }
         case .data(let data):
-            delegate?.webSocket(didReceiveMessageWith: data)
+            onDataPublisher.send(data)
         }
 
         try await receive()
@@ -128,7 +135,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             return
         }
         if let error {
-            delegate?.webSocket(didFailWithError: error)
+            onErrorPublisher.send(error)
         }
         if autoReconnect {
             reConnect()
@@ -137,7 +144,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     
     public func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
         webScoketPrint("webSocketTask:didOpenWithProtocol:\(`protocol` ?? "")")
-        delegate?.webSocketDidOpen()
+        onOpenPublisher.send()
         Task {
             do {
                 try await self.receive()
@@ -162,7 +169,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     }
     
     func didClose(code: Int, reason: String?) {
-        delegate?.webSocket(didCloseWithCode: code, reason: reason)
+        onClosePublisher.send((code, reason))
         task = nil
         if autoReconnect {
             reConnect()
