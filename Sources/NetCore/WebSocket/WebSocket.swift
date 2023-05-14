@@ -113,7 +113,9 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     ///   - reason: 关闭的原因，可不填
     open func close(_ closeCode: URLSessionWebSocketTask.CloseCode = .normalClosure,
                     reason: String? = nil) {
-        task?.cancel(with: closeCode, reason: reason?.data(using: .utf8))
+        if state == .running {
+            task?.cancel(with: closeCode, reason: reason?.data(using: .utf8))
+        }
     }
     
     /// 发送字符串
@@ -123,6 +125,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             webSocketPrint("连接没有成功，发送失败")
             return
         }
+        webSocketPrint("发送string:\(string)")
         try await task?.send(.string(string))
     }
     
@@ -133,6 +136,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             webSocketPrint("连接没有成功，发送失败")
             return
         }
+        webSocketPrint("发送Data:\(data.count)")
         try await task?.send(.data(data))
     }
     
@@ -180,9 +184,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     }
     
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        if error != nil {
-            webSocketPrint("didCompleteWithError:\(error?.localizedDescription ?? "")")
-        }
+        webSocketPrint("didCompleteWithError:\(error?.localizedDescription ?? "")")
         
         if let err = error as NSError?,
             err.code == 57 {
