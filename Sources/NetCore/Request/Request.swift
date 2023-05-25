@@ -39,7 +39,32 @@ open class FormData {
     }
 }
 
+extension Request: Identifiable, Equatable {
+
+    public static func == (lhs: Request, rhs: Request) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    public var id: String {
+        var idStr = ""
+        idStr += urlStr
+        idStr += method.rawValue
+        idStr += jsonToString(json: header) ?? ""
+        idStr += jsonToString(json: params) ?? ""
+        return idStr
+    }
+}
+
 public struct Request {
+
+    func jsonToString(json: Any?) -> String? {
+        if let data = try? JSONSerialization.data(withJSONObject: json, options: .sortedKeys),
+           let str = String(data: data, encoding: .utf8) {
+            return str
+        }
+        return nil
+    }
+
     public static var baseURL = ""
 
     public var urlStr: String {
@@ -58,6 +83,7 @@ public struct Request {
     public var dataKey: String? = nil
     public var modelType: Decodable.Type? = nil
     public var datas: [FormData]?
+    public var useCache: Bool = false
 
     public init(path: String,
                 method: HTTPMethod = .GET,
