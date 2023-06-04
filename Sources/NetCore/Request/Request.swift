@@ -58,7 +58,8 @@ extension Request: Identifiable, Equatable {
 public struct Request {
 
     func jsonToString(json: Any?) -> String? {
-        if let data = try? JSONSerialization.data(withJSONObject: json, options: .sortedKeys),
+        if let json,
+           let data = try? JSONSerialization.data(withJSONObject: json, options: .sortedKeys),
            let str = String(data: data, encoding: .utf8) {
             return str
         }

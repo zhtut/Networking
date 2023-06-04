@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by shutut on 2021/9/7.
 //
@@ -15,7 +15,7 @@ import Combine
 @available(iOS 13.0, *)
 @available(macOS 10.15, *)
 open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
-    
+
     /// url地址
     open var url: URL? {
         didSet {
@@ -24,7 +24,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             }
         }
     }
-    
+
     /// 请求对象
     open var request: URLRequest? {
         didSet {
@@ -33,7 +33,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             }
         }
     }
-    
+
     /// 代理
     open var onWillOpenPublisher = PassthroughSubject<Void, Never>()
     open var onOpenPublisher = PassthroughSubject<Void, Never>()
@@ -43,12 +43,12 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     open var onClosePublisher = PassthroughSubject<(Int, String?), Never>()
 
     private var onReopenPublisher = PassthroughSubject<Void, Never>()
-    
+
     /// 请求task，保持长连接的task
     private var task: URLSessionWebSocketTask?
 
     private var publisherQueue = DispatchQueue(label: "publisherQueue", attributes: .concurrent)
-    
+
     /// 连接状态
     open var state: URLSessionTask.State {
         guard let task else {
@@ -61,13 +61,13 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     open var autoReconnect = true
     var lastConnectTime = 0.0
     var retryDuration = 10.0
-    
+
     public init(url: URL) {
         super.init()
         self.url = url
         setup()
     }
-    
+
     public init(request: URLRequest) {
         super.init()
         self.request = request
@@ -89,7 +89,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             }
             .store(in: &subscriptionSet)
     }
-    
+
     /// 开始连接
     open func open() {
         if state == .running {
@@ -106,7 +106,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
         webSocketPrint("开始连接")
         task?.resume()
     }
-    
+
     /// 关闭连接
     /// - Parameters:
     ///   - closeCode: 关闭的code，可不填
@@ -117,7 +117,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             task?.cancel(with: closeCode, reason: reason?.data(using: .utf8))
         }
     }
-    
+
     /// 发送字符串
     /// - Parameter string: 要发送的字符串
     open func send(string: String) async throws {
@@ -128,7 +128,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
         webSocketPrint("发送string:\(string)")
         try await task?.send(.string(string))
     }
-    
+
     /// 发送data
     /// - Parameter data: 要发送的data
     open func send(data: Data) async throws {
@@ -139,13 +139,13 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
         webSocketPrint("发送Data:\(data.count)")
         try await task?.send(.data(data))
     }
-    
+
     /// 发送一个ping
     /// - Parameter completionHandler: 完成的回调，可不传
     open func sendPing(_ completionHandler: @escaping ((Error?) -> Void)) {
         task?.sendPing(pongReceiveHandler: completionHandler)
     }
-    
+
     private func receive() async throws {
         guard let task = task else {
             throw WebSocketError.noTask
@@ -168,11 +168,13 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
                 self.onDataPublisher.send(data)
                 webSocketPrint("收到data: \(String(data: data, encoding: .utf8) ?? "")")
             }
+        @unknown default:
+            print("task.receive error")
         }
 
         try await receive()
     }
-    
+
     public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
         webSocketPrint("didBecomeInvalidWithError:\(error?.localizedDescription ?? "")")
         var code = -1
@@ -182,12 +184,12 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
         let reason = error?.localizedDescription ?? "URLSession become invalid"
         didClose(code: code, reason: reason)
     }
-    
+
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         webSocketPrint("didCompleteWithError:\(error?.localizedDescription ?? "")")
-        
+
         if let err = error as NSError?,
-            err.code == 57 {
+           err.code == 57 {
             webSocketPrint("读取数据失败，连接已中断：\(err)")
             didClose(code: err.code, reason: err.localizedDescription)
             return
@@ -201,7 +203,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             reConnect()
         }
     }
-    
+
     public func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
         webSocketPrint("webSocketTask:didOpenWithProtocol:\(`protocol` ?? "")")
         publisherQueue.async {
@@ -216,7 +218,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             }
         }
     }
-    
+
     public func urlSession(_ session: URLSession,
                            webSocketTask: URLSessionWebSocketTask,
                            didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
@@ -229,7 +231,7 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
         let intCode = closeCode.rawValue
         didClose(code: intCode, reason: r)
     }
-    
+
     func didClose(code: Int, reason: String?) {
         publisherQueue.async {
             self.onClosePublisher.send((code, reason))
