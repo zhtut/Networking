@@ -78,9 +78,9 @@ public struct Response: Error {
     public static var decryptPublisher: ((Response) -> AnyPublisher<Data?, Never>)?
 }
 
-extension Response {
+public extension Response {
     /// 返回的字符串形式
-    public var bodyString: String? {
+    var bodyString: String? {
         mutating get {
             guard let body = body else { return nil }
             if let bodyString = _bodyString {
@@ -93,7 +93,7 @@ extension Response {
     }
 
     /// 返回的JSON格式
-    public var bodyJson: Any? {
+    var bodyJson: Any? {
         mutating get {
             guard let body = body else { return nil }
             if let bodyJson = _bodyJson {
@@ -106,7 +106,7 @@ extension Response {
     }
 
     /// 返回的Data数据
-    public var data: Any? {
+    var data: Any? {
         mutating get {
             if let data = _data {
                 return data
@@ -145,7 +145,7 @@ extension Response {
     }
 
     /// 请求是否成功
-    public var succeed: Bool {
+    var succeed: Bool {
         if let statusCode = urlResponse?.statusCode {
             return statusCode >= 200 && statusCode < 300
         }
@@ -153,7 +153,7 @@ extension Response {
     }
 }
 
-extension Response {
+public extension Response {
     mutating func decodeModel() throws {
         guard let json = data else { return }
         guard let modelType = self.modelType else { return }
@@ -165,7 +165,7 @@ extension Response {
     }
 }
 
-extension Response {
+extension Response: CustomStringConvertible {
     /// 请求的日志信息，组装成crul命令了，可以复制到cmd中再次调用
     public var description: String {
         guard let request = request else {
@@ -215,8 +215,8 @@ extension Response {
     }
 }
 
-extension TimeInterval {
-    public var dateDesc: String? {
+public extension TimeInterval {
+    var dateDesc: String? {
         var interval = self
         if interval > 16312039620 {
             interval = interval / 1000.0

@@ -4,8 +4,11 @@
 import PackageDescription
 
 let package = Package(name: "NetCore",
-                      platforms: [ .iOS(.v14),
-                                   .macOS(.v11) ],
+                      platforms: [
+                        // combine的flatMap和switchToLatest都要求ios14加才能使用
+                        .macOS(.v11),
+                        .iOS(.v14)
+                      ],
                       products: [
                         .library(name: "NetCore", targets: ["NetCore"]),
                       ],

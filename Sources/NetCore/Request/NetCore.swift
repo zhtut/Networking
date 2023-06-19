@@ -29,7 +29,9 @@ public enum NetCore {
             if let decrypt = Response.decryptPublisher {
                 _ = decrypt(res)
                     .sink { body in
-                        res.body = body
+                        if let body {
+                            res.body = body
+                        }
                     }
             }
             // 解析Model
