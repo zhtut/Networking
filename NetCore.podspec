@@ -2,7 +2,7 @@
 Pod::Spec.new do |s| 
 
   s.name         = "NetCore"
-  s.version      = "1.0.1"
+  s.version      = "1.0.7"
   s.summary      = " ios的网络工具库，使用combine框架作为回调 "
 
   s.description  = <<-DESC
