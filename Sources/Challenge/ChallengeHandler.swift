@@ -6,27 +6,42 @@
 //
 
 import Foundation
+#if canImport(CommonCrypto)
 import CommonCrypto
+#else
+import Crypto
+#endif
 
 public struct SSLPinning {
-    /// 域名
+    /// 域名，如：api.buildyou.tech
     public var host: String
-    /// 证书256指纹，大写64位
+    /// 证书256指纹，大写64位，如 ["069B5CE14BE51FF06DD1E0C0554CC3EA0C9DE2171BCCF82C315CD2EF01AAB20C"]
     public var sha256s: [String]
     public init(host: String, sha256s: [String]) {
-        self.host = host
+        self.host = host.replacingOccurrences(of: "*.", with: "")
         self.sha256s = sha256s
     }
 }
 
-public final class ChallengeHandler: NSObject {
+public final class ChallengeHandler: NSObject, URLSessionDelegate {
+    
+    public func urlSession(_ session: URLSession,
+                           didReceive challenge: URLAuthenticationChallenge,
+                           completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        authenticate(challenge: challenge, completionHandler: completionHandler)
+    }
 
     public static let shared = ChallengeHandler()
 
     public var pinnings: [SSLPinning]?
+    
+    public var session: URLSession!
+    /// 代理队列
+    public var delegateQueue = OperationQueue()
 
     private override init() {
         super.init()
+        session = URLSession(configuration: .default, delegate: self, delegateQueue: delegateQueue)
     }
 
     public func authenticate(challenge: URLAuthenticationChallenge,
@@ -53,7 +68,7 @@ public final class ChallengeHandler: NSObject {
             return
         }
 
-        guard let pinning = pinnings.first(where: { $0.host == challenge.protectionSpace.host }) else {
+        guard let pinning = pinnings.first(where: { challenge.protectionSpace.host.contains($0.host) }) else {
             completionHandler(.performDefaultHandling, nil)
             return
         }
@@ -81,7 +96,9 @@ public extension Data {
 
     var sha256: String {
         let data = self
-
+        
+        #if canImport(CommonCrypto)
+        
         // 创建一个指向内存缓冲区的指针，用于存储哈希结果
         let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: Int(CC_SHA256_DIGEST_LENGTH))
         defer { buffer.deallocate() }
@@ -94,6 +111,11 @@ public extension Data {
         // 将哈希结果转换为 Data 对象
         let hashData = Data(bytes: buffer, count: Int(CC_SHA256_DIGEST_LENGTH))
         return hashData.hex
+
+        #else
+        let hash = Data(SHA256.hash(data: data)).hex
+        return hash
+        #endif
     }
 }
 

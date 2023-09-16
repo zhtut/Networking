@@ -20,5 +20,7 @@ public enum WebSocketState {
 }
 
 public func webSocketPrint(_ msg: String) {
+    #if DEBUG
     print("Websocket-->:\(msg)")
+    #endif
 }

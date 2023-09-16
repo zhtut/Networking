@@ -9,18 +9,17 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
-import Combine
 
 /// 默认实现的一个Model
-public struct Response: Error {
-
+open class Response: Error {
+    
     /// 请求成功的
     public init(start: TimeInterval,
-         duration: TimeInterval,
          request: Request?,
          body: Data?,
          urlResponse: HTTPURLResponse?) {
         self.start = start
+        let duration = Date().timeIntervalSince1970 * 1000.0 - start
         self.duration = duration
         self.request = request
         self.body = body
@@ -29,10 +28,10 @@ public struct Response: Error {
 
     /// 请求失败的
     public init(start: TimeInterval,
-         duration: TimeInterval,
          request: Request?,
          error: Error?) {
         self.start = start
+        let duration = Date().timeIntervalSince1970 * 1000.0 - start
         self.duration = duration
         self.request = request
         self.error = error
@@ -46,13 +45,10 @@ public struct Response: Error {
     }
 
     /// 原始的网络请求，最终发出的网络请求就是这个
-    public var request: Request?
+    open var request: Request?
 
     /// 返回的data
-    public var body: Data?
-
-    private var _bodyString: String?
-    private var _bodyJson: Any?
+    open var body: Data?
 
     /// 原始返回的response对象，如果要查看网络请求的statusCode是不是200，可以在这查看，包括返回的header信息也在这里
     public var urlResponse: HTTPURLResponse?
@@ -67,81 +63,58 @@ public struct Response: Error {
 
     /// 从哪个字段开始解析，使用.格式
     public var dataKey: String?
-    /// 数据对象，字典或者数组
-    private var _data: Any?
     /// 解析的类型
     public var modelType: Decodable.Type?
     /// 解析的model对象，可能是数组或之类的
     public var model: Any?
-
-    // 解密方法
-    public static var decryptPublisher: ((Response) -> AnyPublisher<Data?, Never>)?
 }
 
 public extension Response {
     /// 返回的字符串形式
-    var bodyString: String? {
-        mutating get {
-            guard let body = body else { return nil }
-            if let bodyString = _bodyString {
-                return bodyString
-            }
-            let string = String(data: body, encoding: .utf8)
-            _bodyString = string
-            return string
-        }
+    func bodyString() async -> String? {
+        guard let body = body else { return nil }
+        let string = String(data: body, encoding: .utf8)
+        return string
     }
 
     /// 返回的JSON格式
-    var bodyJson: Any? {
-        mutating get {
-            guard let body = body else { return nil }
-            if let bodyJson = _bodyJson {
-                return bodyJson
-            }
-            let json = try? JSONSerialization.jsonObject(with: body)
-            _bodyJson = json
-            return json
-        }
+    func bodyJson() async -> Any? {
+        guard let body = body else { return nil }
+        let json = try? JSONSerialization.jsonObject(with: body)
+        return json
     }
 
-    /// 返回的Data数据
-    var data: Any? {
-        mutating get {
-            if let data = _data {
-                return data
-            }
-            guard let json = bodyJson else {
-                return nil
-            }
-            guard let key = dataKey,
-                  let dict = json as? [String: Any] else {
-                return json
-            }
-
-            // 如果直接有data，则直接返回
-            if let data = dict[key] {
-                _data = data
-                return data
-            }
-
-            if key.contains(".") {
-                let arr = key.components(separatedBy: ".")
-                var getDict: [String: Any]?
-                for k in arr.dropLast() {
-                    getDict = dict[k] as? [String: Any]
-                    if getDict == nil {
-                        return json
-                    }
-                }
-                if let last = arr.last,
-                   let data = getDict?[last] {
-                    return data
-                }
-            }
-
+    /// 返回的Data数据，通过datakey获取的值，比如data.rows
+    func data() async -> Any? {
+        guard let json = await bodyJson() else {
             return nil
         }
+        guard let key = dataKey,
+              let dict = json as? [String: Any] else {
+            return json
+        }
+
+        // 如果直接有data，则直接返回
+        if let data = dict[key] {
+            return data
+        }
+
+        if key.contains(".") {
+            let arr = key.components(separatedBy: ".")
+            var getDict: [String: Any]?
+            for k in arr.dropLast() {
+                getDict = dict[k] as? [String: Any]
+                if getDict == nil {
+                    return json
+                }
+            }
+            if let last = arr.last,
+               let data = getDict?[last] {
+                return data
+            }
+        }
+
+        return dict
     }
 
     /// 请求是否成功
@@ -154,10 +127,9 @@ public extension Response {
 }
 
 public extension Response {
-    mutating func decodeModel() throws {
-        guard let json = data else { return }
+    func decodeModel() async throws {
+        guard let json = await data() else { return }
         guard let modelType = self.modelType else { return }
-
         if JSONSerialization.isValidJSONObject(json) {
             let jsonData = try JSONSerialization.data(withJSONObject: json)
             self.model = try JSONDecoder().decode(modelType.self, from: jsonData)
@@ -165,16 +137,16 @@ public extension Response {
     }
 }
 
-extension Response: CustomStringConvertible {
+extension Response {
     /// 请求的日志信息，组装成crul命令了，可以复制到cmd中再次调用
-    public var description: String {
+    func curlLog() async -> String {
         guard let request = request else {
             return ""
         }
-        var response = self
+        let response = self
         var urlStr = request.urlStr
         if let urlResponse = response.urlResponse,
-            let responseURL = urlResponse.url?.absoluteString {
+           let responseURL = urlResponse.url?.absoluteString {
             urlStr = responseURL
         }
         let headerFields = request.header
@@ -198,8 +170,13 @@ extension Response: CustomStringConvertible {
         if let urlResponse = response.urlResponse {
             message.append("StatusCode:\(urlResponse.statusCode)\n")
         }
-        if let bodyString = response.bodyString {
-            message.append("\(bodyString)")
+        if let bodyString = await bodyString() {
+            // 最长打印512个字符
+            if bodyString.count > 512 {
+                message.append("\(bodyString.prefix(512))")
+            } else {
+                message.append("\(bodyString)")
+            }
         } else if let error = response.error {
             message.append("\(error)")
         }
@@ -208,10 +185,8 @@ extension Response: CustomStringConvertible {
     }
 
     /// 打印日志信息，方便查看问题
-    public func log() {
-        DispatchQueue.global().async {
-            print(description)
-        }
+    public func log() async {
+        print(await curlLog())
     }
 }
 

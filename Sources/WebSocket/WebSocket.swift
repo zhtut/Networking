@@ -9,12 +9,18 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+#if canImport(CombineX)
+import CombineX
+#else
 import Combine
+#endif
 
 /// 使用系统的URLSessionWebSocketTask实现的WebSocket客户端
 @available(iOS 13.0, *)
 @available(macOS 10.15, *)
-open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
+open class WebSocket: NSObject, URLSessionWebSocketDelegate {
+    
+    public var session = URLSession.shared
 
     /// url地址
     open var url: URL? {
@@ -33,6 +39,10 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             }
         }
     }
+    
+    open var isAutoLog = true
+    
+    open var subscriptionSet = Set<AnyCancellable>()
 
     /// 代理
     open var onWillOpenPublisher = PassthroughSubject<Void, Never>()
@@ -65,12 +75,14 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
     public init(url: URL) {
         super.init()
         self.url = url
+        self.request = URLRequest(url: url)
         setup()
     }
 
     public init(request: URLRequest) {
         super.init()
         self.request = request
+        self.url = request.url
         setup()
     }
 
@@ -81,7 +93,6 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
 
     open func setup() {
         onReopenPublisher
-            .throttle(for: 6, scheduler: delegateQueue, latest: true)
             .sink { [weak self] in
                 guard let self else { return }
                 webSocketPrint("重新连接")
@@ -160,13 +171,17 @@ open class WebSocket: SesstionController, URLSessionWebSocketDelegate {
             if let data = string.data(using: .utf8) {
                 publisherQueue.async {
                     self.onDataPublisher.send(data)
-                    webSocketPrint("收到string:\(string)")
+                    if self.isAutoLog {
+                        webSocketPrint("收到string:\(string)")
+                    }
                 }
             }
         case .data(let data):
             publisherQueue.async {
                 self.onDataPublisher.send(data)
-                webSocketPrint("收到data: \(String(data: data, encoding: .utf8) ?? "")")
+                if self.isAutoLog {
+                    webSocketPrint("收到data: \(String(data: data, encoding: .utf8) ?? "")")
+                }
             }
         @unknown default:
             print("task.receive error")

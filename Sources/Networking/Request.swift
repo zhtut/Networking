@@ -7,13 +7,9 @@
 //
 
 import Foundation
-import Combine
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
-
-public let kDefaultTimeOut: TimeInterval = 10.0
-public let kDefaultResourceTimeOut: TimeInterval = 60.0
 
 /// 请求方法
 public enum HTTPMethod: String {
@@ -76,21 +72,20 @@ public struct Request {
     }
 
     public var path: String
-    public var method: HTTPMethod = .GET
-    public var params: Any? = nil
-    public var header: [String: String]? = nil
-    public var timeOut: TimeInterval = kDefaultTimeOut
-    public var printLog: Bool = true
-    public var dataKey: String? = nil
-    public var modelType: Decodable.Type? = nil
+    public var method: HTTPMethod
+    public var params: Any?
+    public var header: [String: String]?
+    public var timeOut: TimeInterval
+    public var printLog: Bool
+    public var dataKey: String?
+    public var modelType: Decodable.Type?
     public var datas: [FormData]?
-    public var useCache: Bool = false
 
     public init(path: String,
                 method: HTTPMethod = .GET,
                 params: Any? = nil,
                 header: [String : String]? = nil,
-                timeOut: TimeInterval = kDefaultTimeOut,
+                timeOut: TimeInterval = Networking.timeOut,
                 printLog: Bool = true,
                 dataKey: String? = nil,
                 modelType: Decodable.Type? = nil,
@@ -120,20 +115,5 @@ public struct Request {
             }
         }
         return ""
-    }
-
-    var urlRequestPublisher: AnyPublisher<URLRequest, Error> {
-        return Future { promise in
-            DispatchQueue.global().async {
-                var urlRequest: URLRequest
-                do {
-                    urlRequest = try URLRequest.from(self)
-                    promise(.success(urlRequest))
-                } catch {
-                    promise(.failure(error))
-                }
-            }
-        }
-        .eraseToAnyPublisher()
     }
 }
