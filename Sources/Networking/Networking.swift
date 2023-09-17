@@ -21,6 +21,9 @@ public struct Networking {
     /// 资源超时时间
     public static let resourceTimeOut: TimeInterval = 60.0
     
+    /// 基础url
+    public static var baseURL = ""
+    
     /// 发送请求
     /// - Parameter request: 请求对象
     /// - Returns: 返回请求响应对象
@@ -43,7 +46,7 @@ public struct Networking {
             res.dataKey = request.dataKey
             res.modelType = request.modelType
             if res.succeed, let _ = request.modelType {
-                try? await res.decodeModel()
+                try await res.decodeModel()
             }
             
             if request.printLog {

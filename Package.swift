@@ -9,7 +9,7 @@ var cDependencies = [PackageDescription.Target.Dependency]()
 var wDependencies = [PackageDescription.Target.Dependency]()
 
 //#if os(Linux)
-let latestVersion = Version("0.0.1")..<Version("99.99.99")
+let latestVersion: Range<Version> = "0.0.1"..<"99.99.99"
 pDependencies += [
     .package(url: "https://github.com/apple/swift-crypto.git", latestVersion),
     .package(url: "https://github.com/zhtut/CombineX.git", latestVersion),

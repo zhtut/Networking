@@ -124,6 +124,12 @@ public extension Response {
         }
         return false
     }
+    
+    func throwError() throws {
+        if let error {
+            throw error
+        }
+    }
 }
 
 public extension Response {
@@ -172,7 +178,7 @@ extension Response {
         }
         if let bodyString = await bodyString() {
             // 最长打印512个字符
-            if bodyString.count > 512 {
+            if bodyString.count > 10240 {
                 message.append("\(bodyString.prefix(512))")
             } else {
                 message.append("\(bodyString)")
@@ -186,7 +192,8 @@ extension Response {
 
     /// 打印日志信息，方便查看问题
     public func log() async {
-        print(await curlLog())
+        let log = await curlLog()
+        print("\(log)")
     }
 }
 

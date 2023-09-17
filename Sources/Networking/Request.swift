@@ -62,13 +62,11 @@ public struct Request {
         return nil
     }
 
-    public static var baseURL = ""
-
     public var urlStr: String {
         if path.hasPrefix("http") {
             return path
         }
-        return Request.baseURL + path
+        return (Networking.baseURL as NSString).appendingPathComponent(path)
     }
 
     public var path: String
