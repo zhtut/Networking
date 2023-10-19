@@ -83,6 +83,13 @@ public extension Response {
         let json = try? JSONSerialization.jsonObject(with: body)
         return json
     }
+    
+    /// 返回的JSON格式
+    func bodyJson() -> Any? {
+        guard let body = body else { return nil }
+        let json = try? JSONSerialization.jsonObject(with: body)
+        return json
+    }
 
     /// 返回的Data数据，通过datakey获取的值，比如data.rows
     func data() async -> Any? {
