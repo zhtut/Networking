@@ -78,34 +78,31 @@ public extension Response {
     }
 
     /// 返回的JSON格式
-    func bodyJson() async -> Any? {
+    var bodyJson: Any? {
         guard let body = body else { return nil }
         let json = try? JSONSerialization.jsonObject(with: body)
         return json
     }
     
     /// 返回的JSON格式
-    func bodyJson() -> Any? {
-        guard let body = body else { return nil }
-        let json = try? JSONSerialization.jsonObject(with: body)
-        return json
+    func bodyJson() async -> Any? {
+        bodyJson
     }
-
-    /// 返回的Data数据，通过datakey获取的值，比如data.rows
-    func data() async -> Any? {
-        guard let json = await bodyJson() else {
+    
+    var data: Any? {
+        guard let json = bodyJson else {
             return nil
         }
         guard let key = dataKey,
               let dict = json as? [String: Any] else {
             return json
         }
-
+        
         // 如果直接有data，则直接返回
         if let data = dict[key] {
             return data
         }
-
+        
         if key.contains(".") {
             let arr = key.components(separatedBy: ".")
             var getDict: [String: Any]?
@@ -120,8 +117,13 @@ public extension Response {
                 return data
             }
         }
-
+        
         return dict
+    }
+
+    /// 返回的Data数据，通过datakey获取的值，比如data.rows
+    func data() async -> Any? {
+        data
     }
 
     /// 请求是否成功

@@ -24,6 +24,25 @@ public struct Networking {
     /// 基础url
     public static var baseURL = ""
     
+    public static func send(request: URLRequest) async throws -> (Data, URLResponse) {
+#if os(macOS)
+        return try await session.data(for: request)
+#else
+        return withCheckedThrowingContinuation { continuation in
+            let task = session.dataTask(with: request) { data, response, error in
+                if let data, let response {
+                    continuation.resume(returning: (data, response))
+                } else if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(throwing: MessageError(message: "no response"))
+                }
+            }
+            task.resume()
+        }
+#endif
+    }
+    
     /// 发送请求
     /// - Parameter request: 请求对象
     /// - Returns: 返回请求响应对象
@@ -31,7 +50,7 @@ public struct Networking {
         let startTime = Date().timeIntervalSince1970 * 1000.0
         do {
             let urlRequest = try URLRequest.from(request)
-            let (data, response) = try await session.data(for: urlRequest)
+            let (data, response) = try await send(request: urlRequest)
             let res = Response(start: startTime,
                                request: request,
                                body: data,

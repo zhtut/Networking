@@ -114,7 +114,7 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
         }
         task = session.webSocketTask(with: request)
         task?.maximumMessageSize = 4096
-        webSocketPrint("开始连接")
+        webSocketPrint("开始连接\(request.url?.absoluteString ?? "")")
         task?.resume()
     }
 
