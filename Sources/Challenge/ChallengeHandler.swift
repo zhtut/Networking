@@ -100,25 +100,25 @@ public extension Data {
     var sha256: String {
         let data = self
         
-        #if canImport(CommonCrypto)
+#if canImport(CommonCrypto)
         
         // 创建一个指向内存缓冲区的指针，用于存储哈希结果
         let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: Int(CC_SHA256_DIGEST_LENGTH))
         defer { buffer.deallocate() }
-
+        
         // 计算哈希值
         _ = data.withUnsafeBytes {
             CC_SHA256($0.baseAddress, CC_LONG(data.count), buffer)
         }
-
+        
         // 将哈希结果转换为 Data 对象
         let hashData = Data(bytes: buffer, count: Int(CC_SHA256_DIGEST_LENGTH))
         return hashData.hex
-
-        #else
+        
+#else
         let hash = Data(SHA256.hash(data: data)).hex
         return hash
-        #endif
+#endif
     }
 }
 
