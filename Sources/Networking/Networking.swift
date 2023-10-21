@@ -34,7 +34,7 @@ public struct Networking {
 #if os(macOS) || os(iOS)
         return try await session.data(for: request)
 #else
-        return withCheckedThrowingContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             let task = session.dataTask(with: request) { data, response, error in
                 if let data, let response {
                     continuation.resume(returning: (data, response))
