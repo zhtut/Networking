@@ -11,6 +11,9 @@ import CommonCrypto
 #else
 import Crypto
 #endif
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public struct SSLPinning {
     /// 域名，如：api.buildyou.tech
