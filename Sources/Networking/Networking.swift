@@ -10,6 +10,12 @@ import Foundation
 import FoundationNetworking
 #endif
 
+/// 网络错误
+public enum NetworkError: Error {
+    /// 返回时出现参数错误
+    case wrongResponse
+}
+
 public struct Networking {
     
     public static var decryptHandler: ((Response) -> Data)?
@@ -25,7 +31,7 @@ public struct Networking {
     public static var baseURL = ""
     
     public static func send(request: URLRequest) async throws -> (Data, URLResponse) {
-#if os(macOS)
+#if os(macOS) || os(iOS)
         return try await session.data(for: request)
 #else
         return withCheckedThrowingContinuation { continuation in
@@ -35,7 +41,7 @@ public struct Networking {
                 } else if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume(throwing: MessageError(message: "no response"))
+                    continuation.resume(throwing: NetworkError.wrongResponse)
                 }
             }
             task.resume()
