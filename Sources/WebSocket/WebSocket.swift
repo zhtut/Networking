@@ -30,7 +30,7 @@ import NIOPosix
 @available(macOS 10.15, *)
 @available(iOS 13.0, *)
 #endif
-open class WebSocket: NSObject, URLSessionWebSocketDelegate {
+open class WebSocket: NSObject {
     
 #if canImport(WebSocketKit)
     /// eventLoop组
@@ -106,6 +106,8 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
         case .canceling:
             return WebSocketState.closing
         case .completed:
+            return WebSocketState.closed
+        @unknown default:
             return WebSocketState.closed
         }
 #endif
@@ -197,10 +199,24 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
             task?.resume()
 #endif
     }
+
+    func reConnect() {
+        log("尝试重新连接")
+        if state == .connected {
+            log("当前状态是连接中，不用重连")
+            return
+        }
+        onReopenPublisher.send()
+    }
+}
+
 #if canImport(WebSocketKit)
+@available(macOS 12, *)
+extension WebSocket {
+    
     /// 连接上了
     /// - Parameter ws: websocket对象
-    func setupWebSocket(ws: WebSocketKit.WebSocket) async {
+    @Sendable func setupWebSocket(ws: WebSocketKit.WebSocket) async {
         self.ws = ws
         configWebSocket()
         publisherQueue.async {
@@ -218,10 +234,10 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
             let data = Data(buffer: buffer)
             self?.didReceive(data)
         })
-        ws?.onPong({ [weak self] ws in
+        ws?.onPong({ [weak self] ws, _ in
             self?.didReceivePong()
         })
-        ws?.onPing({ [weak self] ws in
+        ws?.onPing({ [weak self] ws, _ in
             guard let self = self else { return }
             self.didReceivePing()
         })
@@ -254,13 +270,9 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
             self?.didClose(code: code)
         })
     }
-    
+}
 #else
-#endif
-    
-    
-#if canImport(WebSocketKit)
-#else
+extension WebSocket: URLSessionWebSocketDelegate {
     private func receive() async throws {
         guard let task = task else {
             throw WebSocketError.noTask
@@ -338,17 +350,8 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
         let intCode = closeCode.rawValue
         didClose(code: intCode, reason: r)
     }
-#endif
-
-    func reConnect() {
-        log("尝试重新连接")
-        if state == .connected {
-            log("当前状态是连接中，不用重连")
-            return
-        }
-        onReopenPublisher.send()
-    }
 }
+#endif
 
 // MARK: receive
 #if canImport(WebSocketKit)
