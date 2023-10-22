@@ -20,7 +20,7 @@ import Combine
 @available(macOS 10.15, *)
 open class WebSocket: NSObject, URLSessionWebSocketDelegate {
     
-    public var session = URLSession.shared
+    public var session: URLSession!
 
     /// url地址
     open var url: URL? {
@@ -99,6 +99,8 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
     }
 
     open func setup() {
+        session = URLSession(configuration: .default, delegate: self, delegateQueue: OperationQueue())
+        
         onReopenPublisher
             .sink { [weak self] in
                 guard let self else { return }
@@ -187,7 +189,7 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
                 self.log("收到data: \(String(data: data, encoding: .utf8) ?? "")")
             }
         @unknown default:
-            print("task.receive error")
+            self.log("task.receive error")
         }
 
         try await receive()
@@ -232,7 +234,7 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
                 try await self.receive()
             }
             catch {
-                print("读取数据错误：\(error)")
+                self.log("读取数据错误：\(error)")
             }
         }
     }
