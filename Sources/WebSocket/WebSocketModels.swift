@@ -15,6 +15,7 @@ public enum WebSocketError: Error {
 public enum WebSocketState {
     case connecting
     case connected
+    case suspended
     case closing
     case closed
 }

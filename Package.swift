@@ -13,9 +13,11 @@ var wDependencies = [PackageDescription.Target.Dependency]()
 let latestVersion: Range<Version> = "0.0.1"..<"99.99.99"
 pDependencies += [
     .package(url: "https://github.com/zhtut/CombineX.git", latestVersion),
+    .package(url: "https://github.com/vapor/websocket-kit.git", from: "2.3.1"),
 ]
 wDependencies += [
-    "CombineX"
+    "CombineX",
+    .product(name: "WebSocketKit", package: "websocket-kit"),
 ]
 #endif
 
