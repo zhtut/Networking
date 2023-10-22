@@ -171,6 +171,7 @@ open class WebSocket: NSObject {
         }
 #if canImport(WebSocketKit)
             let urlStr = request.url?.absoluteString
+            log("开始连接\(urlStr ?? "")")
             
             guard let urlStr = urlStr else {
                 print("url和request的url都为空，无法连接websocket")
@@ -227,6 +228,7 @@ extension WebSocket {
     
     /// 详细配置回调的方法
     func configWebSocket() {
+        log("websocket连接成功")
         ws?.pingInterval = TimeAmount.minutes(8)
         ws?.onText({ [weak self] ws, string in
             self?.didReceive(string)
@@ -376,6 +378,7 @@ extension WebSocket {
     }
     
     func didReceivePong() {
+        log("收到pong")
         publisherQueue.async {
             self.onPongPublisher.send()
         }
@@ -383,6 +386,7 @@ extension WebSocket {
     
     func didReceivePing() {
 #if canImport(WebSocketKit)
+        log("收到ping")
         Task {
             try await sendPong()
         }
@@ -390,6 +394,7 @@ extension WebSocket {
     }
     
     func didClose(code: Int, reason: String? = nil) {
+        log("已关闭：\(code) \(reason ?? "")")
         publisherQueue.async {
             self.onClosePublisher.send((code, reason))
         }
