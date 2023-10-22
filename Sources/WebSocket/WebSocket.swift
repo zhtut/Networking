@@ -189,9 +189,8 @@ open class WebSocket: NSObject {
                 try await WebSocketKit.WebSocket.connect(to: urlStr,
                                                          headers: httpHeaders,
                                                          configuration: config,
-                                                         on: elg) { (ws) async in
-                    await self.setupWebSocket(ws: ws)
-                }
+                                                         on: elg,
+                                                         onUpgrade: setupWebSocket)
             }
 #else
             
@@ -218,7 +217,7 @@ extension WebSocket {
     
     /// 连接上了
     /// - Parameter ws: websocket对象
-    func setupWebSocket(ws: WebSocketKit.WebSocket) async {
+    @Sendable func setupWebSocket(ws: WebSocketKit.WebSocket) async {
         self.ws = ws
         configWebSocket()
         publisherQueue.async {
@@ -230,10 +229,10 @@ extension WebSocket {
     func configWebSocket() {
         log("websocket连接成功")
         ws?.pingInterval = TimeAmount.minutes(8)
-        ws?.onText({ [weak self] ws, string in
+        ws?.onText({ [weak self] (ws, string) async in
             self?.didReceive(string)
         })
-        ws?.onBinary({ [weak self] ws, buffer in
+        ws?.onBinary({ [weak self] (ws, buffer) async in
             let data = Data(buffer: buffer)
             self?.didReceive(data)
         })
