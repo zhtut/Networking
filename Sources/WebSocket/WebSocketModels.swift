@@ -18,9 +18,3 @@ public enum WebSocketState {
     case closing
     case closed
 }
-
-public func webSocketPrint(_ msg: String) {
-    #if DEBUG
-    print("Websocket-->:\(msg)")
-    #endif
-}

@@ -40,7 +40,8 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
         }
     }
     
-    open var isAutoLog = true
+    /// 是否打印日志
+    open var isPrintLog = true
     
     open var subscriptionSet = Set<AnyCancellable>()
 
@@ -90,12 +91,18 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
         super.init()
         setup()
     }
+    
+    private func log(_ str: String) {
+        if isPrintLog {
+            print("Websocket-->:\(str)")
+        }
+    }
 
     open func setup() {
         onReopenPublisher
             .sink { [weak self] in
                 guard let self else { return }
-                webSocketPrint("重新连接")
+                log("重新连接")
                 self.open()
             }
             .store(in: &subscriptionSet)
@@ -104,17 +111,17 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
     /// 开始连接
     open func open() {
         if state == .running {
-            webSocketPrint("state为running，不需要连接")
+            log("state为running，不需要连接")
             return
         }
         self.onWillOpenPublisher.send()
         guard let request else {
-            webSocketPrint("连接时发现错误，没有URLRequest")
+            log("连接时发现错误，没有URLRequest")
             return
         }
         task = session.webSocketTask(with: request)
         task?.maximumMessageSize = 4096
-        webSocketPrint("开始连接\(request.url?.absoluteString ?? "")")
+        log("开始连接\(request.url?.absoluteString ?? "")")
         task?.resume()
     }
 
@@ -133,10 +140,10 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
     /// - Parameter string: 要发送的字符串
     open func send(string: String) async throws {
         guard state == .running else {
-            webSocketPrint("连接没有成功，发送失败")
+            log("连接没有成功，发送失败")
             return
         }
-        webSocketPrint("发送string:\(string)")
+        log("发送string:\(string)")
         try await task?.send(.string(string))
     }
 
@@ -144,10 +151,10 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
     /// - Parameter data: 要发送的data
     open func send(data: Data) async throws {
         guard state == .running else {
-            webSocketPrint("连接没有成功，发送失败")
+            log("连接没有成功，发送失败")
             return
         }
-        webSocketPrint("发送Data:\(data.count)")
+        log("发送Data:\(data.count)")
         try await task?.send(.data(data))
     }
 
@@ -171,17 +178,13 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
             if let data = string.data(using: .utf8) {
                 publisherQueue.async {
                     self.onDataPublisher.send(data)
-                    if self.isAutoLog {
-                        webSocketPrint("收到string:\(string)")
-                    }
+                    self.log("收到string:\(string)")
                 }
             }
         case .data(let data):
             publisherQueue.async {
                 self.onDataPublisher.send(data)
-                if self.isAutoLog {
-                    webSocketPrint("收到data: \(String(data: data, encoding: .utf8) ?? "")")
-                }
+                self.log("收到data: \(String(data: data, encoding: .utf8) ?? "")")
             }
         @unknown default:
             print("task.receive error")
@@ -191,7 +194,7 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
     }
 
     public func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
-        webSocketPrint("didBecomeInvalidWithError:\(error?.localizedDescription ?? "")")
+        log("didBecomeInvalidWithError:\(error?.localizedDescription ?? "")")
         var code = -1
         if let nsError = error as? NSError {
             code = nsError.code
@@ -201,11 +204,11 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        webSocketPrint("didCompleteWithError:\(error?.localizedDescription ?? "")")
+        log("didCompleteWithError:\(error?.localizedDescription ?? "")")
 
         if let err = error as NSError?,
            err.code == 57 {
-            webSocketPrint("读取数据失败，连接已中断：\(err)")
+            log("读取数据失败，连接已中断：\(err)")
             didClose(code: err.code, reason: err.localizedDescription)
             return
         }
@@ -220,7 +223,7 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
     }
 
     public func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-        webSocketPrint("webSocketTask:didOpenWithProtocol:\(`protocol` ?? "")")
+        log("webSocketTask:didOpenWithProtocol:\(`protocol` ?? "")")
         publisherQueue.async {
             self.onOpenPublisher.send()
         }
@@ -238,7 +241,7 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
                            webSocketTask: URLSessionWebSocketTask,
                            didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
                            reason: Data?) {
-        webSocketPrint("urlSession:didCloseWith:\(closeCode)")
+        log("urlSession:didCloseWith:\(closeCode)")
         var r = ""
         if let d = reason {
             r = String(data: d, encoding: .utf8) ?? ""
@@ -258,9 +261,9 @@ open class WebSocket: NSObject, URLSessionWebSocketDelegate {
     }
 
     func reConnect() {
-        webSocketPrint("尝试重新连接")
+        log("尝试重新连接")
         if state == .running {
-            webSocketPrint("当前状态是连接中，不用重连")
+            log("当前状态是连接中，不用重连")
             return
         }
         onReopenPublisher.send()
