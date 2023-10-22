@@ -229,19 +229,18 @@ extension WebSocket {
     func configWebSocket() {
         log("websocket连接成功")
         ws?.pingInterval = TimeAmount.minutes(8)
-        ws?.onText({ [weak self] (ws, string) async in
+        ws?.onText({ [weak self] (_, string) async in
             self?.didReceive(string)
         })
-        ws?.onBinary({ [weak self] (ws, buffer) async in
+        ws?.onBinary({ [weak self] (_, buffer) async in
             let data = Data(buffer: buffer)
             self?.didReceive(data)
         })
-        ws?.onPong({ [weak self] ws, _ in
+        ws?.onPong({ [weak self] (_, _) async in
             self?.didReceivePong()
         })
-        ws?.onPing({ [weak self] ws, _ in
-            guard let self = self else { return }
-            self.didReceivePing()
+        ws?.onPing({ [weak self] _, _ async in
+            self?.didReceivePing()
         })
         ws?.onClose.whenComplete({ [weak self] result in
             var code = -1
