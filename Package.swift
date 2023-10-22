@@ -5,7 +5,6 @@ import PackageDescription
 
 
 var pDependencies = [PackageDescription.Package.Dependency]()
-var cDependencies = [PackageDescription.Target.Dependency]()
 var wDependencies = [PackageDescription.Target.Dependency]()
 
 #if os(macOS) || os(iOS)
@@ -13,11 +12,7 @@ var wDependencies = [PackageDescription.Target.Dependency]()
 #else
 let latestVersion: Range<Version> = "0.0.1"..<"99.99.99"
 pDependencies += [
-    .package(url: "https://github.com/apple/swift-crypto.git", latestVersion),
     .package(url: "https://github.com/zhtut/CombineX.git", latestVersion),
-]
-cDependencies += [
-    .product(name: "Crypto", package: "swift-crypto"),
 ]
 wDependencies += [
     "CombineX"
@@ -29,7 +24,7 @@ targets.append(.target(name: "Networking"))
 targets.append(.target(name: "WebSocket", dependencies: wDependencies))
 #if os(macOS) || os(iOS)
 // linux等不支持Challenge
-targets.append(.target(name: "Challenge", dependencies: cDependencies))
+targets.append(.target(name: "Challenge"))
 #endif
 
 var testTargetDependencies = [PackageDescription.Target.Dependency]()
