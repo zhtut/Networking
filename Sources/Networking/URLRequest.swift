@@ -12,28 +12,28 @@ import FoundationNetworking
 
 private let boundary = "wfWiEWrgEFA9A78512weF7106A";
 
-public extension URLRequest {
-
-    static func from(_ request: Request) throws -> URLRequest {
-        guard let url = URL(string: request.urlStr) else {
-            print("URL生成失败，请检查URL是否正确：\(request.urlStr)")
+public extension Session {
+    
+    func urlRequest(_ request: Request) throws -> URLRequest {
+        var request = request
+        guard let url = URL(string: request.urlString(baseURL)) else {
+            print("URL生成失败，请检查URL是否正确：\(request.path)")
             throw URLError(.badURL)
         }
-
         // 创建请求
         var urlRequest = URLRequest(url: url,
                                     cachePolicy: .reloadIgnoringLocalAndRemoteCacheData,
                                     timeoutInterval: request.timeOut)
         urlRequest.httpMethod = request.method.rawValue
         urlRequest.httpShouldHandleCookies = true
-
+        
         // 集成header
         if let header = request.header {
             for (key, value) in header {
                 urlRequest.addValue(value, forHTTPHeaderField: key)
             }
         }
-
+        
         if let datas = request.datas {
             // 集成参数，FromData
             urlRequest.integrate(datas: datas)
@@ -42,9 +42,12 @@ public extension URLRequest {
             // 集成参数
             urlRequest.integrate(params: request.params)
         }
-
+        
         return urlRequest
     }
+}
+
+public extension URLRequest {
 
     mutating func integrate(datas: [FormData]) {
 

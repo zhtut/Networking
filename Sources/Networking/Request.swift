@@ -43,7 +43,7 @@ extension Request: Identifiable, Equatable {
 
     public var id: String {
         var idStr = ""
-        idStr += urlStr
+        idStr += urlString ?? ""
         idStr += method.rawValue
         idStr += jsonToString(json: header) ?? ""
         idStr += jsonToString(json: params) ?? ""
@@ -61,19 +61,24 @@ public struct Request {
         }
         return nil
     }
-
-    public var urlStr: String {
+    
+    public var urlString: String?
+    
+    public mutating func urlString(_ baseURL: String) -> String {
+        var string: String
         if path.hasPrefix("http") {
-            return path
+            string = path
         }
-        return (Networking.baseURL as NSString).appendingPathComponent(path)
+        string = (baseURL as NSString).appendingPathComponent(path)
+        self.urlString = string
+        return string
     }
 
     public var path: String
     public var method: HTTPMethod
     public var params: Any?
     public var header: [String: String]?
-    public var timeOut: TimeInterval
+    public var timeOut: TimeInterval = 10
     public var printLog: Bool
     public var dataKey: String?
     public var modelType: Decodable.Type?
@@ -83,7 +88,7 @@ public struct Request {
                 method: HTTPMethod = .GET,
                 params: Any? = nil,
                 header: [String : String]? = nil,
-                timeOut: TimeInterval = Networking.timeOut,
+                timeOut: TimeInterval = Session.shared.timeOut,
                 printLog: Bool = true,
                 dataKey: String? = nil,
                 modelType: Decodable.Type? = nil,

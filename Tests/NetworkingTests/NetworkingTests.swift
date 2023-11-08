@@ -5,7 +5,7 @@ import XCTest
 
 final class NetworkingTests: XCTestCase {
     func testRequest() async {
-        let response = await Networking.send(request: Request(path: "https://www.baidu.com"))
+        let response = await Session.shared.send(request: Request(path: "https://www.baidu.com"))
         XCTAssert(response.succeed)
         if response.succeed {
             print("请求成功")
@@ -21,9 +21,9 @@ final class NetworkingTests: XCTestCase {
                 "D8AA2D806C571FB62ED487484190923F9324F0319CFFFEDF7B621F134E6BC100"
             ])
         ]
-        Networking.session = ChallengeHandler.shared.session
+        Session.shared.session = ChallengeHandler.shared.session
         // 进行请求，如果连上抓包代理，则请求不通过
-        let response = await Networking.send(request: Request(path: "https://www.baidu.com"))
+        let response = await Session.shared.send(request: Request(path: "https://www.baidu.com"))
         XCTAssert(response.succeed)
         if response.succeed {
             print("请求成功")

@@ -16,21 +16,23 @@ public enum NetworkError: Error {
     case wrongResponse
 }
 
-public struct Networking {
+public class Session {
     
-    public static var decryptHandler: ((Response) -> Data)?
-    public static var session = URLSession.shared
+    public static let shared = Session()
+    
+    public var decryptHandler: ((Response) -> Data)?
+    public var session = URLSession.shared
     
     /// 接口请求超时时间
-    public static let timeOut: TimeInterval = 10.0
+    public var timeOut: TimeInterval = 10.0
     
     /// 资源超时时间
-    public static let resourceTimeOut: TimeInterval = 60.0
+    public var resourceTimeOut: TimeInterval = 60.0
     
     /// 基础url
-    public static var baseURL = ""
+    public var baseURL = ""
     
-    public static func send(request: URLRequest) async throws -> (Data, URLResponse) {
+    public func send(request: URLRequest) async throws -> (Data, URLResponse) {
 #if os(macOS) || os(iOS)
         return try await session.data(for: request)
 #else
@@ -52,10 +54,10 @@ public struct Networking {
     /// 发送请求
     /// - Parameter request: 请求对象
     /// - Returns: 返回请求响应对象
-    public static func send(request: Request) async -> Response {
+    public func send(request: Request) async -> Response {
         let startTime = Date().timeIntervalSince1970 * 1000.0
         do {
-            let urlRequest = try URLRequest.from(request)
+            let urlRequest = try urlRequest(request)
             let (data, response) = try await send(request: urlRequest)
             let res = Response(start: startTime,
                                request: request,

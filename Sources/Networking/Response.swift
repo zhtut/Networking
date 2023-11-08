@@ -159,7 +159,7 @@ extension Response {
             return ""
         }
         let response = self
-        var urlStr = request.urlStr
+        var urlStr = request.urlString ?? ""
         if let urlResponse = response.urlResponse,
            let responseURL = urlResponse.url?.absoluteString {
             urlStr = responseURL
