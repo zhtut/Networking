@@ -68,8 +68,9 @@ public struct Request {
         var string: String
         if path.hasPrefix("http") {
             string = path
+        } else {
+            string = (baseURL as NSString).appendingPathComponent(path)
         }
-        string = (baseURL as NSString).appendingPathComponent(path)
         self.urlString = string
         return string
     }
