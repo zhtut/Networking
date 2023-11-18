@@ -53,28 +53,7 @@ extension Request: Identifiable, Equatable {
 
 public struct Request {
 
-    func jsonToString(json: Any?) -> String? {
-        if let json,
-           let data = try? JSONSerialization.data(withJSONObject: json, options: .sortedKeys),
-           let str = String(data: data, encoding: .utf8) {
-            return str
-        }
-        return nil
-    }
-    
     public var urlString: String?
-    
-    public mutating func urlString(_ baseURL: String) -> String {
-        var string: String
-        if path.hasPrefix("http") {
-            string = path
-        } else {
-            string = (baseURL as NSString).appendingPathComponent(path)
-        }
-        self.urlString = string
-        return string
-    }
-
     public var path: String
     public var method: HTTPMethod
     public var params: Any?
@@ -104,9 +83,32 @@ public struct Request {
         self.modelType = modelType
         self.datas = datas
     }
+}
 
+public extension Request {
+    
+    func jsonToString(json: Any?) -> String? {
+        if let json,
+           let data = try? JSONSerialization.data(withJSONObject: json, options: .sortedKeys),
+           let str = String(data: data, encoding: .utf8) {
+            return str
+        }
+        return nil
+    }
+    
+    mutating func urlString(_ baseURL: String) -> String {
+        var string: String
+        if path.hasPrefix("http") {
+            string = path
+        } else {
+            string = (baseURL as NSString).appendingPathComponent(path)
+        }
+        self.urlString = string
+        return string
+    }
+    
     /// 请求体描述
-    public var paramsString: String {
+    var paramsString: String {
         if let params {
             if let str = params as? String {
                 return str

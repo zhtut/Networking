@@ -26,29 +26,37 @@ public struct SSLPinning {
     }
 }
 
-public final class ChallengeHandler: NSObject, URLSessionDelegate {
+/// 证书挑战处理
+public final class ChallengeHandler: NSObject {
+
+    public static let shared = ChallengeHandler()
+    
+    /// 配置ssl pinning
+    public var pinnings: [SSLPinning]
+    
+    public lazy var session: URLSession = {
+        URLSession(configuration: .default, delegate: self, delegateQueue: delegateQueue)
+    }()
+    
+    /// 代理队列
+    public var delegateQueue = OperationQueue()
+
+    public init(pinnings: [SSLPinning] = []) {
+        self.pinnings = pinnings
+        super.init()
+    }
+}
+
+extension ChallengeHandler: URLSessionDelegate {
     
     public func urlSession(_ session: URLSession,
                            didReceive challenge: URLAuthenticationChallenge,
                            completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         authenticate(challenge: challenge, completionHandler: completionHandler)
     }
-
-    public static let shared = ChallengeHandler()
-
-    public var pinnings: [SSLPinning]?
     
-    public var session: URLSession!
-    /// 代理队列
-    public var delegateQueue = OperationQueue()
-
-    private override init() {
-        super.init()
-        session = URLSession(configuration: .default, delegate: self, delegateQueue: delegateQueue)
-    }
-
     public func authenticate(challenge: URLAuthenticationChallenge,
-                               completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+                             completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         if Thread.isMainThread {
             DispatchQueue.global().async {
                 self.asyncAuthenticate(challenge: challenge, completionHandler: completionHandler)
@@ -57,7 +65,7 @@ public final class ChallengeHandler: NSObject, URLSessionDelegate {
             asyncAuthenticate(challenge: challenge, completionHandler: completionHandler)
         }
     }
-
+    
     func asyncAuthenticate(challenge: URLAuthenticationChallenge,
                            completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
@@ -65,29 +73,24 @@ public final class ChallengeHandler: NSObject, URLSessionDelegate {
             completionHandler(.performDefaultHandling, nil)
             return
         }
-
-        guard let pinnings else {
-            completionHandler(.performDefaultHandling, nil)
-            return
-        }
-
+        
         guard let pinning = pinnings.first(where: { challenge.protectionSpace.host.contains($0.host) }) else {
             completionHandler(.performDefaultHandling, nil)
             return
         }
-
+        
         guard let serverTrustSha256 = serverTrust.sha256 else {
             completionHandler(.performDefaultHandling, nil)
             return
         }
-
+        
         // 从serverTrust copy出的第一个证书，就是我们的域名证书，取这个证书的data进行sha256，就能匹配上我们预置的sha256指纹
         if pinning.sha256s.contains(serverTrustSha256) {
             let credential = URLCredential(trust: serverTrust)
             completionHandler(.useCredential, credential)
             return
         }
-
+        
         completionHandler(.cancelAuthenticationChallenge, nil)
     }
 }

@@ -71,10 +71,14 @@ open class Response: Error {
 
 public extension Response {
     /// 返回的字符串形式
-    func bodyString() async -> String? {
+    var bodyString: String? {
         guard let body = body else { return nil }
         let string = String(data: body, encoding: .utf8)
         return string
+    }
+    /// 返回的字符串形式
+    func bodyString() async -> String? {
+        bodyString
     }
 
     /// 返回的JSON格式

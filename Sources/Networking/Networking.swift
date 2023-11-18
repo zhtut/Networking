@@ -9,6 +9,9 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+#if canImport(Combine)
+import Combine
+#endif
 
 /// 网络错误
 public enum NetworkError: Error {
@@ -20,7 +23,7 @@ public class Session {
     
     public static let shared = Session()
     
-    public var decryptHandler: ((Response) -> Data)?
+    public var decryptHandler: ((Response) throws -> Data)?
     public var session = URLSession.shared
     
     /// 接口请求超时时间
@@ -65,8 +68,9 @@ public class Session {
                                urlResponse: response as? HTTPURLResponse)
             
             // 如果配置有解密方法，则优先用解密方法解密一下
-            if let decryptHandler = decryptHandler {
-                res.body = decryptHandler(res)
+            if let decryptHandler = decryptHandler,
+                let de = try? decryptHandler(res) {
+                res.body = de
             }
             
             // 解析Model
@@ -89,4 +93,16 @@ public class Session {
             return res
         }
     }
+    
+#if canImport(Combine)
+    public func requestPublisher(_ request: Request) -> AnyPublisher<Response, Never> {
+        return Future { promise in
+            Task {
+                let res = await self.send(request: request)
+                promise(.success(res))
+            }
+        }
+        .eraseToAnyPublisher()
+    }
+#endif
 }

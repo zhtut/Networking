@@ -72,14 +72,12 @@ open class WebSocket: NSObject {
     open var subscriptionSet = Set<AnyCancellable>()
 
     /// 代理
-    open var onWillOpenPublisher = PassthroughSubject<Void, Never>()
+    open var willOpenPublisher = PassthroughSubject<Void, Never>()
     open var onOpenPublisher = PassthroughSubject<Void, Never>()
     open var onPongPublisher = PassthroughSubject<Void, Never>()
     open var onDataPublisher = PassthroughSubject<Data, Never>()
     open var onErrorPublisher = PassthroughSubject<Error, Never>()
     open var onClosePublisher = PassthroughSubject<(Int, String?), Never>()
-
-    private var onReopenPublisher = PassthroughSubject<Void, Never>()
 
     private var publisherQueue = DispatchQueue(label: "publisherQueue", attributes: .concurrent)
     
@@ -148,14 +146,6 @@ open class WebSocket: NSObject {
 #else
         session = URLSession(configuration: .default, delegate: self, delegateQueue: OperationQueue())
 #endif
-        
-        onReopenPublisher
-            .sink { [weak self] in
-                guard let self else { return }
-                log("重新连接")
-                self.open()
-            }
-            .store(in: &subscriptionSet)
     }
 
     /// 开始连接
@@ -164,7 +154,7 @@ open class WebSocket: NSObject {
             log("state为connected，不需要连接")
             return
         }
-        self.onWillOpenPublisher.send()
+        self.willOpenPublisher.send()
         guard let request else {
             log("连接时发现错误，没有URLRequest")
             return
@@ -207,7 +197,9 @@ open class WebSocket: NSObject {
             log("当前状态是连接中，不用重连")
             return
         }
-        onReopenPublisher.send()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.open()
+        }
     }
 }
 
@@ -430,7 +422,7 @@ extension WebSocket {
     
     /// 发送字符串
     /// - Parameter string: 要发送的字符串
-    public func send(string: String) async throws {
+    public func send(_ string: String) async throws {
         guard state == .connected else {
             log("连接没有成功，发送失败")
             return
@@ -445,7 +437,7 @@ extension WebSocket {
     
     /// 发送data
     /// - Parameter data: 要发送的data
-    public func send(data: Data) async throws {
+    public func send(_ data: Data) async throws {
         guard state == .connected else {
             log("连接没有成功，发送失败")
             return
